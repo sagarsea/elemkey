@@ -10,6 +10,7 @@ test("WebMCP verifies a visible decision receipt without purchasing or sharing c
   await page.getByLabel("Email").fill("sagar@example.test");
   await page.getByLabel("Password").fill("ElemKeyDemo2026!");
   await page.getByRole("button", { name: "Sign in" }).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __registrations: Array<{ name: string }> }).__registrations.some(({ name }) => name === "verify_purchase_terms"))).toBe(true);
 
   const tools = await page.evaluate(() => (window as unknown as { __registrations: Array<Record<string, unknown>> }).__registrations.map(({ name, inputSchema, annotations }) => ({ name, inputSchema, annotations })));
   expect(tools.find(({ name }) => name === "verify_purchase_terms")).toMatchObject({ annotations: { readOnlyHint: true, untrustedContentHint: false }, inputSchema: { additionalProperties: false, required: ["product_id", "offer_quote", "quantity"] } });

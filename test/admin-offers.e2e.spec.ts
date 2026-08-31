@@ -40,6 +40,7 @@ test("human form and WebMCP functions share normalized preview, visible list, fa
   await page.getByRole("button", { name: "Preview offer" }).click();
   await expect(page.locator('[data-region="admin_preview"]')).toContainText("£279.20");
   await page.getByRole("button", { name: "Confirm and create" }).click();
+  await expect(page.locator('[data-region="admin_offers"]')).toContainText("Offer created.");
   await expect(page.locator("#admin-offer-list")).toContainText("Human VIP offer");
 
   await page.route("**/api/admin/offers/preview", (route) => route.abort());

@@ -39,6 +39,38 @@ test("retail routes, canonical products, and recovery are complete", async () =>
   assert.match(await missing.text(), /Return to the shop/);
 });
 
+test("product pages expose canonical, descriptive, machine-readable merchant facts", async () => {
+  const origin = await serve();
+  const publicOrigin = "https://elemkey.onrender.com";
+  for (const product of config.products) {
+    const html = await (await fetch(origin + product.product_url)).text();
+    assert.match(html, new RegExp(`<link rel="canonical" href="${publicOrigin}${product.product_url}">`), product.sku);
+    assert.match(html, new RegExp(`<meta name="description" content="${product.description.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}">`), product.sku);
+    const json = html.match(/<script type="application\/ld\+json">([^<]+)<\/script>/)?.[1];
+    assert.ok(json, product.sku);
+    assert.deepEqual(JSON.parse(json), {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: product.title,
+      description: product.description,
+      image: publicOrigin + product.image_url,
+      sku: product.sku,
+      model: product.model,
+      color: product.variant,
+      category: product.category,
+      additionalProperty: Object.entries(product.specifications).map(([name, value]) => ({ "@type": "PropertyValue", name, value })),
+      offers: {
+        "@type": "Offer",
+        url: publicOrigin + product.product_url,
+        priceCurrency: product.currency,
+        price: (product.unit_price_pence / 100).toFixed(2),
+        availability: `https://schema.org/${product.stock_quantity ? "InStock" : "OutOfStock"}`,
+        itemCondition: "https://schema.org/NewCondition"
+      }
+    }, product.sku);
+  }
+});
+
 test("account preserves signed-out copy and signed-in offers follow active rules", async () => {
   const origin = await serve();
   const signedOut = await fetch(`${origin}/account`);
