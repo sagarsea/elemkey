@@ -17,7 +17,7 @@ export default defineConfig({
     trace: "retain-on-failure",
     headless: nativeWebMCP ? false : undefined,
     launchOptions: {
-      executablePath,
+      executablePath: nativeWebMCP ? executablePath : undefined,
       args: nativeWebMCP ? ["--enable-experimental-web-platform-features", "--enable-features=WebMCP,WebMCPTesting,DevToolsWebMCPSupport"] : []
     }
   },

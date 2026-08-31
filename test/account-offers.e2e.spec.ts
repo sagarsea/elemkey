@@ -99,7 +99,7 @@ test("signed-in account adds the two existing offer tools and drives the same vi
   const names = () => page.evaluate(() => (window as unknown as { __registrations: Array<{ name: string }> }).__registrations.map(({ name }) => name));
   expect(await names()).toEqual(["search_products", "view_product", "get_store_policies", "view_basket"]);
   await signIn(page);
-  expect(await names()).toEqual(["search_products", "view_product", "get_store_policies", "view_basket", "get_member_offer", "prepare_basket"]);
+  await expect.poll(names).toEqual(["search_products", "view_product", "get_store_policies", "view_basket", "get_member_offer", "prepare_basket"]);
   const offer = await page.evaluate(async () => {
     const tool = (window as unknown as { __registrations: Array<{ name: string; execute: (input: unknown) => Promise<unknown> }> }).__registrations.find(({ name }) => name === "get_member_offer")!;
     return tool.execute({ product_id: "product-vn9-snd" });
