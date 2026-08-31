@@ -1,0 +1,6 @@
+[
+  { "rule_id": "MEMBER-5-FREE", "version": 1, "status": "active", "product_sku": "AX7-BLK", "authenticated_customer": true, "discount_percent": 5, "delivery_pence": 0 },
+  { "rule_id": "MEMBER-5-FREE", "version": 1, "status": "active", "product_sku": "VN9-SND", "authenticated_customer": true, "discount_percent": 5, "delivery_pence": 0 },
+  { "rule_id": "MEMBER-5-FREE", "version": 1, "status": "active", "product_sku": "FS8-WAL", "authenticated_customer": true, "discount_percent": 5, "delivery_pence": 0 },
+  { "rule_id": "MEMBER-5-FREE", "version": 1, "status": "active", "product_sku": "NT2-WAL", "authenticated_customer": true, "discount_percent": 5, "delivery_pence": 0 }
+]

@@ -1,0 +1,11 @@
+node_modules
+dist
+test-results
+playwright-report
+.gstack
+.git
+.github
+.vercel
+.env*
+*.png
+*.md

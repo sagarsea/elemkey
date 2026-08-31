@@ -1,0 +1,15 @@
+services:
+  elemkey:
+    build: .
+    image: elemkey:local
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      SESSION_COOKIE_SECRET: ${SESSION_COOKIE_SECRET:?SESSION_COOKIE_SECRET is required}
+      OFFER_TOKEN_SECRET: ${OFFER_TOKEN_SECRET:?OFFER_TOKEN_SECRET is required}
+      MEMBER_BINDING_SECRET: ${MEMBER_BINDING_SECRET:?MEMBER_BINDING_SECRET is required}
+      OFFER_STORE_PATH: /data/offers.json
+    volumes:
+      - ./data:/data
