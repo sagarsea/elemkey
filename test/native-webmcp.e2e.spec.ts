@@ -33,7 +33,7 @@ test("real Chromium discovers and executes the complete local WebMCP journey", a
   await page.getByLabel("Password").fill("ElemKeyDemo2026!");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/products\/AX7-BLK/);
-  expect((await page.evaluate(async () => (await (document as Document & { modelContext: { getTools(): Promise<Array<{ name: string }>> } }).modelContext.getTools()).map(({ name }) => name))).sort()).toEqual(["add_to_basket", "get_member_offer", "get_product_details", "get_store_policies", "prepare_basket", "search_products", "verify_purchase_terms", "view_basket", "view_product"]);
+  await expect.poll(async () => (await page.evaluate(async () => (await (document as Document & { modelContext: { getTools(): Promise<Array<{ name: string }>> } }).modelContext.getTools()).map(({ name }) => name))).sort()).toEqual(["add_to_basket", "get_member_offer", "get_product_details", "get_store_policies", "prepare_basket", "search_products", "verify_purchase_terms", "view_basket", "view_product"]);
 
   const offer = await execute("get_member_offer", { product_id: "product-ax7-blk" }) as { status: string; data: { offer_quote: string; delivered_total_pence: number } };
   expect(offer.status).toBe("eligible");

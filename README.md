@@ -21,7 +21,7 @@ Open `http://localhost:3000/`.
 
 ### Run in Docker
 
-Docker is the current local deployment target. Cloud deployment is deliberately deferred:
+For a local production-like run:
 
 ```bash
 export SESSION_COOKIE_SECRET="$(openssl rand -base64 32)"
@@ -77,7 +77,7 @@ npm test
 BASE_URL=http://127.0.0.1:3000 npm run smoke
 ```
 
-`npm test` runs TypeScript checking, compiled `node:test` domain/security/live-HTTP tests, and Playwright storefront/WebMCP wiring tests. Mock WebMCP proves local application wiring only. Record local native discovery/execution and ten fresh sessions in [test/local-docker-acceptance.md](test/local-docker-acceptance.md); complete [test/deployed-acceptance.md](test/deployed-acceptance.md) only after cloud deployment is explicitly authorised.
+`npm test` runs TypeScript checking, compiled `node:test` domain/security/live-HTTP tests, and Playwright storefront/WebMCP wiring tests. Mock WebMCP proves local application wiring only. Local native discovery/execution is recorded in [test/local-docker-acceptance.md](test/local-docker-acceptance.md); public production evidence is recorded separately in [test/deployed-acceptance.md](test/deployed-acceptance.md).
 
 After the Docker service is healthy, run the browser suites against that exact container:
 
@@ -88,8 +88,12 @@ xvfb-run -a env NATIVE_WEBMCP=1 E2E_BASE_URL=http://127.0.0.1:3000 npx playwrigh
 
 The native test uses installed Chrome Canary with WebMCP testing features enabled. The completed local gate is recorded in [test/local-docker-acceptance.md](test/local-docker-acceptance.md).
 
-## Local deployment status
+## Deployment status
 
-The Docker build, smoke test, recreation test, complete regression suite, Docker-target Playwright suite, native WebMCP journey, and ten fresh native sessions are green. The current target is local Docker only at `http://127.0.0.1:3000`; cloud deployment and the separate [deployed acceptance record](test/deployed-acceptance.md) remain pending until explicitly authorised.
+- Live application: https://elemkey.onrender.com
+- Public source: https://github.com/sagarsea/elemkey
+- Local Docker: `http://127.0.0.1:3000`
+
+The Render smoke test, GitHub Actions, complete regression suite, native WebMCP journey, manual sign-in handoff, and ten fresh deployed Canary sessions are green. The service uses a persistent Render disk at `/data` and stops at a non-payment checkout preview.
 
 Licensed under the [MIT License](LICENSE).
