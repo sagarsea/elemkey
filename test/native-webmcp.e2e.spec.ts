@@ -25,7 +25,7 @@ test("real Chromium discovers and executes the complete local WebMCP journey", a
     return typeof result === "string" ? JSON.parse(result) : result;
   }, { name, input });
 
-  expect(await execute("search_products", { query: "AX7-BLK" })).toMatchObject({ status: "ok", ui_region: "product" });
+  expect(await execute("search_products", { query: "AX7-BLK" })).toMatchObject({ status: "ok", ui_region: "product", data: { member_offer_prompt: "You may qualify for a special offer. Sign in to reveal your personal offer." } });
   const commuting = await execute("search_products", { query: "What is best for commuting?", category: "headphones", in_stock_only: true, features: ["commuting"], sort: "relevance", limit: 1 }) as { data: { products: Array<{ id: string; match_reason: string }> } };
   expect(commuting.data.products).toEqual([expect.objectContaining({ id: "product-vn9-snd", match_reason: expect.stringMatching(/travel.*noise cancelling/i) })]);
   const compared = await execute("compare_products", { product_ids: ["product-ax7-blk", "product-mh2-slv", "product-vn9-snd"] }) as { data: { products: Array<{ product_id: string }> } };
