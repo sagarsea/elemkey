@@ -13,7 +13,7 @@ async function main() {
   assert.notEqual((await fetch(`${origin}/styles.css`)).headers.get("cache-control"), "private, no-store", "static assets keep their own policy");
   assert.deepEqual(await (await fetch(`${origin}/healthz`)).json(), { status: "ok" });
   assert.equal((await (await fetch(`${origin}/api/products/search?query=AX7-BLK`)).json()).status, "ok");
-  assert.equal((await (await fetch(`${origin}/api/products/search?sort=relevance`)).json()).data.products.length, 16);
+  assert.equal((await (await fetch(`${origin}/api/products/search?sort=relevance`)).json()).data.products.length, 6);
   assert.equal((await fetch(`${origin}/api/purchase`)).status, 404);
   console.log(`ElemKey deployed smoke passed: ${origin}`);
 }

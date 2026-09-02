@@ -9,8 +9,9 @@ test("real Chromium discovers and executes the complete local WebMCP journey", a
     if (!context) return [];
     return (await context.getTools()).map((tool) => ({ ...tool, inputSchema: typeof tool.inputSchema === "string" ? JSON.parse(tool.inputSchema) : tool.inputSchema }));
   });
-  expect(tools.map(({ name }) => name).sort()).toEqual(["add_to_basket", "get_member_offer", "get_product_details", "get_store_policies", "prepare_basket", "search_products", "verify_purchase_terms", "view_basket", "view_product"]);
+  expect(tools.map(({ name }) => name).sort()).toEqual(["add_to_basket", "compare_products", "get_member_offer", "get_product_details", "get_store_policies", "prepare_basket", "search_products", "verify_purchase_terms", "view_basket", "view_product"]);
   expect(tools.find(({ name }) => name === "search_products")).toMatchObject({ annotations: { readOnlyHint: true, untrustedContentHint: false }, inputSchema: { additionalProperties: false, required: ["query"] } });
+  expect(tools.find(({ name }) => name === "compare_products")).toMatchObject({ annotations: { readOnlyHint: true, untrustedContentHint: false }, inputSchema: { additionalProperties: false, required: ["product_ids"] } });
   expect(tools.find(({ name }) => name === "get_member_offer")).toMatchObject({ annotations: { readOnlyHint: true, untrustedContentHint: false }, inputSchema: { additionalProperties: false, required: ["product_id"] } });
   expect(tools.find(({ name }) => name === "verify_purchase_terms")).toMatchObject({ annotations: { readOnlyHint: true, untrustedContentHint: false }, inputSchema: { additionalProperties: false, required: ["product_id", "offer_quote", "quantity"] } });
   expect(tools.find(({ name }) => name === "prepare_basket")).toMatchObject({ annotations: { readOnlyHint: false, untrustedContentHint: false }, inputSchema: { additionalProperties: false, required: ["product_id", "offer_quote", "quantity"] } });
@@ -25,6 +26,11 @@ test("real Chromium discovers and executes the complete local WebMCP journey", a
   }, { name, input });
 
   expect(await execute("search_products", { query: "AX7-BLK" })).toMatchObject({ status: "ok", ui_region: "product" });
+  const commuting = await execute("search_products", { query: "What is best for commuting?", category: "headphones", in_stock_only: true, features: ["commuting"], sort: "relevance", limit: 1 }) as { data: { products: Array<{ id: string; match_reason: string }> } };
+  expect(commuting.data.products).toEqual([expect.objectContaining({ id: "product-vn9-snd", match_reason: expect.stringMatching(/travel.*noise cancelling/i) })]);
+  const compared = await execute("compare_products", { product_ids: ["product-ax7-blk", "product-mh2-slv", "product-vn9-snd"] }) as { data: { products: Array<{ product_id: string }> } };
+  expect(compared.data.products.map(({ product_id }) => product_id)).toEqual(["product-vn9-snd", "product-mh2-slv", "product-ax7-blk"]);
+  await expect(page.locator('[data-region="recommendations"]')).toContainText("Your basket is unchanged and no purchase has been created");
   expect(await execute("get_member_offer", { product_id: "product-ax7-blk" })).toMatchObject({ status: "sign_in_required", ui_region: "offer" });
   await expect(page.locator('[data-region="offer"]')).toContainText("Sign in to reveal");
 
@@ -33,7 +39,7 @@ test("real Chromium discovers and executes the complete local WebMCP journey", a
   await page.getByLabel("Password").fill("ElemKeyDemo2026!");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/products\/AX7-BLK/);
-  await expect.poll(async () => (await page.evaluate(async () => (await (document as Document & { modelContext: { getTools(): Promise<Array<{ name: string }>> } }).modelContext.getTools()).map(({ name }) => name))).sort()).toEqual(["add_to_basket", "get_member_offer", "get_product_details", "get_store_policies", "prepare_basket", "search_products", "verify_purchase_terms", "view_basket", "view_product"]);
+  await expect.poll(async () => (await page.evaluate(async () => (await (document as Document & { modelContext: { getTools(): Promise<Array<{ name: string }>> } }).modelContext.getTools()).map(({ name }) => name))).sort()).toEqual(["add_to_basket", "compare_products", "get_member_offer", "get_product_details", "get_store_policies", "prepare_basket", "search_products", "verify_purchase_terms", "view_basket", "view_product"]);
 
   const offer = await execute("get_member_offer", { product_id: "product-ax7-blk" }) as { status: string; data: { offer_quote: string; delivered_total_pence: number } };
   expect(offer.status).toBe("eligible");
@@ -51,7 +57,7 @@ test("real Chromium discovers and executes the complete local WebMCP journey", a
   expect(await page.locator('[data-region="basket"] .line-item').count()).toBe(1);
 
   await page.goto("/account");
-  expect((await page.evaluate(async () => (await (document as Document & { modelContext: { getTools(): Promise<Array<{ name: string }>> } }).modelContext.getTools()).map(({ name }) => name))).sort()).toEqual(["get_member_offer", "get_store_policies", "prepare_basket", "search_products", "view_basket", "view_product"]);
+  expect((await page.evaluate(async () => (await (document as Document & { modelContext: { getTools(): Promise<Array<{ name: string }>> } }).modelContext.getTools()).map(({ name }) => name))).sort()).toEqual(["compare_products", "get_member_offer", "get_store_policies", "prepare_basket", "search_products", "view_basket", "view_product"]);
   const accountOffer = await execute("get_member_offer", { product_id: "product-vn9-snd" }) as { data: { offer_quote: string } };
   await expect(page.locator('[data-offer-product-id="product-vn9-snd"] [data-offer-result]')).toContainText("£265.05");
   await execute("prepare_basket", { product_id: "product-vn9-snd", offer_quote: accountOffer.data.offer_quote, quantity: 1 });
@@ -60,7 +66,7 @@ test("real Chromium discovers and executes the complete local WebMCP journey", a
 
   const trace = await page.evaluate(() => sessionStorage.getItem("elemkey.trace") ?? "");
   expect(trace).not.toMatch(/sagar|ElemKeyDemo|offer_quote|product_id|eyJ/i);
-  await page.screenshot({ path: ".gstack/qa-reports/screenshots/native-webmcp-complete.png", fullPage: true });
+  await page.screenshot({ path: "native-webmcp-complete.png", fullPage: true });
 });
 
 test("real Chromium exposes only owner tools and creates a visible persisted offer", async ({ page }) => {

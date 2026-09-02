@@ -71,8 +71,8 @@ test("search is case-insensitive across name, model, and SKU and validates shape
   for (const query of ["auralux x7 studio headphones", "AURALUX X7", "ax7-blk", "x7 studio"]) {
     const result = searchProducts({ query }, config().product, instant);
     assert.equal(result.status, "ok");
-    assert.equal(result.data?.product?.id, "product-ax7-blk");
-    assert.equal(result.data?.product?.delivered_total_pence, 51399);
+    assert.equal(result.data?.products[0]?.id, "product-ax7-blk");
+    assert.equal(result.data?.products[0]?.delivered_total_pence, 51399);
   }
   assert.equal(searchProducts({ query: "speakers" }, config().product, instant).status, "empty");
   for (const input of [{}, { query: "" }, { query: "   " }, { query: "x".repeat(101) }, { query: "x", extra: true }]) {

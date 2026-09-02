@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { evaluateOffer, loadConfig, searchProducts } from "../src/domain";
+import { compareProducts, evaluateOffer, loadConfig, searchProducts } from "../src/domain";
 
 const secret = (byte: number) => Buffer.alloc(32, byte).toString("base64");
 const config = () => loadConfig({
@@ -28,11 +28,11 @@ test("catalogue contains sixteen complete, unique, immutable products", () => {
   assert.throws(() => { (products as unknown as unknown[]).push({}); }, TypeError);
 });
 
-test("catalogue search preserves best match and adds deterministic complete results", () => {
+test("catalogue search preserves best match and adds deterministic compact results", () => {
   const cfg = config();
   const ax7 = searchProducts({ query: "AX7-BLK" }, cfg.products, instant);
   assert.equal(ax7.status, "ok");
-  assert.equal(ax7.data?.product?.id, "product-ax7-blk");
+  assert.equal(ax7.data?.products[0]?.id, "product-ax7-blk");
   assert.deepEqual(ax7.data?.products?.map(({ id }) => id), ["product-ax7-blk"]);
 
   const headphones = searchProducts({ query: "", category: "headphones", sort: "price_asc" }, cfg.products, instant);
@@ -42,6 +42,59 @@ test("catalogue search preserves best match and adds deterministic complete resu
   assert.equal(searchProducts({ category: "unknown" }, cfg.products, instant).status, "invalid_input");
   assert.equal(searchProducts({ max_price_pence: 1.5 }, cfg.products, instant).status, "invalid_input");
   assert.equal(searchProducts({ in_stock_only: "true" }, cfg.products, instant).status, "invalid_input");
+});
+
+test("shopper prompts produce compact explainable searches and one delivered-price comparison", () => {
+  const cfg = config();
+  const wireless = searchProducts({
+    query: "Show me wireless headphones under £400.", category: "headphones",
+    max_delivered_price_pence: 40000, connection: "wireless", sort: "delivered_price_asc"
+  }, cfg.products, instant);
+  assert.deepEqual(wireless.data?.products.map(({ id }) => id), ["product-de1-wht", "product-vn9-snd"]);
+  assert.equal("product" in (wireless.data ?? {}), false);
+  assert.equal("specifications" in (wireless.data?.products[0] ?? {}), false);
+  assert.match(wireless.data?.products[1]?.match_reason ?? "", /wireless|Bluetooth/i);
+
+  const commuting = searchProducts({
+    query: "What is best for commuting?", category: "headphones", in_stock_only: true,
+    features: ["commuting"], sort: "relevance", limit: 1
+  }, cfg.products, instant);
+  assert.deepEqual(commuting.data?.products.map(({ id }) => id), ["product-vn9-snd"]);
+  assert.match(commuting.data?.products[0]?.match_reason ?? "", /travel|noise cancelling/i);
+
+  const home = searchProducts({
+    query: "I want lightweight wired headphones for home listening.", category: "headphones",
+    in_stock_only: true, connection: "wired", features: ["lightweight", "home_listening"], sort: "weight_asc"
+  }, cfg.products, instant);
+  assert.deepEqual(home.data?.products.map(({ id }) => id), ["product-mh2-slv"]);
+  assert.match(home.data?.products[0]?.match_reason ?? "", /248 g.*open-back|open-back.*248 g/i);
+
+  const headphonesOnly = searchProducts({
+    query: "Only show headphones—not cases or stands.", category: "headphones", limit: 8
+  }, cfg.products, instant);
+  assert.equal(headphonesOnly.data?.products.length, 4);
+  assert.equal(headphonesOnly.data?.products.every(({ category }) => category === "headphones"), true);
+
+  const empty = searchProducts({ query: "wireless headphones under £400" }, cfg.products, instant);
+  assert.deepEqual(empty.data, {
+    query: "wireless headphones under £400",
+    products: [], result_count: 0, total_matches: 0,
+    reason: "compound_query_not_supported",
+    suggested_filters: { category: "headphones", max_delivered_price_pence: 40000, connection: "wireless" }
+  });
+
+  const compared = compareProducts([
+    "product-ax7-blk", "product-mh2-slv", "product-vn9-snd"
+  ], cfg.products, () => "sign_in_required", instant);
+  assert.deepEqual(compared.data?.products.map(({ product_id, delivered_price_pence }) => ({ product_id, delivered_price_pence })), [
+    { product_id: "product-vn9-snd", delivered_price_pence: 28899 },
+    { product_id: "product-mh2-slv", delivered_price_pence: 35899 },
+    { product_id: "product-ax7-blk", delivered_price_pence: 51399 }
+  ]);
+  assert.deepEqual(compared.data?.products.map(({ member_offer_status }) => member_offer_status), ["sign_in_required", "sign_in_required", "sign_in_required"]);
+  assert.deepEqual(compared.data?.products.map(({ weight_grams }) => weight_grams), [262, 248, 286]);
+  assert.equal(compared.data?.products[0]?.noise_control, "Hybrid noise cancelling");
+  assert.equal(compared.data?.products[0]?.warranty, "Not provided");
 });
 
 test("member offers cover the four active SKUs without changing AX7 arithmetic", () => {

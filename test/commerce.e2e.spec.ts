@@ -39,8 +39,8 @@ test("keeps the three legacy WebMCP tools backward compatible inside the expande
   });
   await page.goto("/products/AX7-BLK");
   const registrations = await page.evaluate(() => (window as unknown as { __registrations: Array<Record<string, unknown>> }).__registrations.map(({ name, inputSchema, annotations, hasSignal }) => ({ name, inputSchema, annotations, hasSignal })));
-  expect(registrations).toHaveLength(9);
-  expect(registrations.map(({ name }) => name)).toEqual(["search_products", "view_product", "get_store_policies", "view_basket", "get_product_details", "get_member_offer", "verify_purchase_terms", "prepare_basket", "add_to_basket"]);
+  expect(registrations).toHaveLength(10);
+  expect(registrations.map(({ name }) => name)).toEqual(["search_products", "compare_products", "view_product", "get_store_policies", "view_basket", "get_product_details", "get_member_offer", "verify_purchase_terms", "prepare_basket", "add_to_basket"]);
   expect(registrations.find(({ name }) => name === "search_products")).toMatchObject({ annotations: { readOnlyHint: true, untrustedContentHint: false }, hasSignal: true, inputSchema: { additionalProperties: false, required: ["query"] } });
   expect(registrations.find(({ name }) => name === "get_member_offer")).toMatchObject({ annotations: { readOnlyHint: true, untrustedContentHint: false }, inputSchema: { additionalProperties: false, required: ["product_id"] } });
   expect(registrations.find(({ name }) => name === "prepare_basket")).toMatchObject({ annotations: { readOnlyHint: false, untrustedContentHint: false }, inputSchema: { additionalProperties: false, required: ["product_id", "offer_quote", "quantity"] } });

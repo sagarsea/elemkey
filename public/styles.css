@@ -110,6 +110,11 @@ input, select { width:100%; min-height:42px; padding:9px 11px; border:1px solid 
 .basket-line-actions strong { font:500 28px Georgia,serif; }
 .basket-total { display:flex; justify-content:space-between; padding:24px 0; font-size:22px; }
 .field-message { min-height:1.5em; color:var(--muted); }
+.recommendations { margin-bottom:32px; border-top:7px solid var(--moss); }
+.recommendations[hidden] { display:none; }
+.comparison { width:100%; border-collapse:collapse; }
+.comparison th, .comparison td { padding:10px 8px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+.comparison th:first-child { padding-left:0; }
 .admin-heading { display:flex; justify-content:space-between; align-items:start; gap:24px; margin-bottom:42px; }
 .admin-layout { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(360px,.85fr); gap:42px; align-items:start; }
 .admin-layout fieldset { margin:0; padding:16px; border:1px solid var(--line); }

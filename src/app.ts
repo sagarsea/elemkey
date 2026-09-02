@@ -2,7 +2,7 @@ import express, { type NextFunction, type Request, type Response } from "express
 import { getIronSession } from "iron-session";
 import { resolve } from "node:path";
 import { authenticate, createMemberSession, createOwnerSession, createRequestToken, issueOfferPreview, issueOfferQuote, ownerAccount, safeReturnTo, validateOwnerSession, validateRequest, validateSession, verifyOfferPreview, verifyOfferQuote, type MemberSession, type OwnerSession } from "./security";
-import { publicProduct, searchProducts, type AppConfig, type Product } from "./domain";
+import { compareProducts, publicProduct, searchProducts, type AppConfig, type Product } from "./domain";
 import { OfferStore, OfferValidationError, VersionConflictError, deliveredTotal, offerPhase, selectMemberOffer } from "./offer-store";
 import { accountView, adminOffersView, adminSignInView, basketView, checkoutView, homeView, notFoundView, policyView, productView, recoveryView, ruleView, shopView, signInView } from "./views";
 
@@ -84,10 +84,21 @@ export function createApp(config: AppConfig, options: AppOptions = {}) {
     if ("query" in req.query) input.query = req.query.query;
     if ("category" in req.query) input.category = req.query.category;
     if ("max_price_pence" in req.query) input.max_price_pence = typeof req.query.max_price_pence === "string" && /^\d+$/.test(req.query.max_price_pence) ? Number(req.query.max_price_pence) : req.query.max_price_pence;
+    if ("max_delivered_price_pence" in req.query) input.max_delivered_price_pence = typeof req.query.max_delivered_price_pence === "string" && /^\d+$/.test(req.query.max_delivered_price_pence) ? Number(req.query.max_delivered_price_pence) : req.query.max_delivered_price_pence;
     if ("in_stock_only" in req.query) input.in_stock_only = req.query.in_stock_only === "true" ? true : req.query.in_stock_only === "false" ? false : req.query.in_stock_only;
+    if ("connection" in req.query) input.connection = req.query.connection;
+    if ("features" in req.query) input.features = Array.isArray(req.query.features) ? req.query.features : [req.query.features];
     if ("sort" in req.query) input.sort = req.query.sort;
+    if ("limit" in req.query) input.limit = typeof req.query.limit === "string" && /^\d+$/.test(req.query.limit) ? Number(req.query.limit) : req.query.limit;
     const result = searchProducts(input, config.products, now());
     res.status(result.status === "invalid_input" ? 400 : 200).json(result);
+  });
+
+  app.post("/api/products/compare", async (req, res) => {
+    const keys = req.body && typeof req.body === "object" ? Object.keys(req.body) : [];
+    const auth = await activeSession(req, res);
+    const result = compareProducts(keys.length === 1 && keys[0] === "product_ids" ? req.body.product_ids : null, config.products, (product) => auth.session ? (winnerFor(product, auth.session.member_id) ? "available" : "not_available") : "sign_in_required", now());
+    return res.status(result.status === "invalid_input" ? 400 : 200).json(result);
   });
 
   app.get("/api/products/:product_id", (req, res) => {

@@ -67,22 +67,26 @@
     card.dataset.productId = product.id;
     const link = node("a");
     link.href = product.product_url;
-    const image = node("img");
-    image.src = product.image_url;
-    image.alt = product.image_alt;
-    image.width = 640;
-    image.height = 480;
-    link.append(image, node("p", `${product.category} · ${product.sku}`, "eyebrow"), node("h2", product.title));
+    if (product.image_url) {
+      const image = node("img");
+      image.src = product.image_url;
+      image.alt = product.image_alt;
+      image.width = 640;
+      image.height = 480;
+      link.append(image);
+    }
+    link.append(node("p", `${product.category} · ${product.sku}`, "eyebrow"), node("h2", product.title));
     const foot = node("div", undefined, "card-foot");
-    foot.append(node("strong", money(product.unit_price_pence)), node("span", product.stock_quantity > 0 ? "In stock" : "Out of stock", product.stock_quantity > 0 ? "available" : "unavailable"));
-    card.append(link, node("p", product.description), foot);
+    const inStock = product.stock_status ? product.stock_status === "in_stock" : product.stock_quantity > 0;
+    foot.append(node("strong", money(product.delivered_total_pence ?? product.unit_price_pence)), node("span", inStock ? "In stock" : "Out of stock", inStock ? "available" : "unavailable"));
+    card.append(link, node("p", product.match_reason || product.description), foot);
     return card;
   }
 
   function renderProducts(result, target = region("product")) {
     if (!target || !["ok", "empty"].includes(result.status)) return;
     commerceState.products = result.data?.products || [];
-    commerceState.product = result.data?.product || null;
+    commerceState.product = commerceState.products[0] || null;
     if (result.status === "empty") {
       target.replaceChildren(node("div", `No product matched “${result.data?.query || ""}”. Clear or edit your search.`, "notice"));
       return;
@@ -110,9 +114,9 @@
 
   async function searchProducts(input) {
     commerceState.query = typeof input?.query === "string" ? input.query : "";
-    const result = await invoke("search_products", "product", `/api/products/search?query=${encodeURIComponent(commerceState.query)}`);
+    const result = await invoke("search_products", "product", `/api/products/search?${filterQuery(input)}`);
     if (!result) return null;
-    if (["ok", "empty"].includes(result.status)) renderHeaderResults(result);
+    if (["ok", "empty"].includes(result.status)) document.body.dataset.page === "shop" ? renderProducts(result) : renderHeaderResults(result);
     const message = document.querySelector("[data-search-message]");
     if (message) message.textContent = result.status === "invalid_input" ? result.error?.message || "Correct the search." : result.status === "service_unavailable" ? "Search is temporarily unavailable; the last result remains visible." : "";
     return result;
@@ -120,7 +124,8 @@
 
   function filterQuery(input = {}) {
     const params = new URLSearchParams();
-    for (const key of ["query", "category", "max_price_pence", "sort"]) if (input[key] !== undefined && input[key] !== "") params.set(key, String(input[key]));
+    for (const key of ["query", "category", "max_price_pence", "max_delivered_price_pence", "connection", "sort", "limit"]) if (input[key] !== undefined && input[key] !== "") params.set(key, String(input[key]));
+    for (const feature of input.features || []) params.append("features", feature);
     if (input.in_stock_only !== undefined) params.set("in_stock_only", String(input.in_stock_only));
     if (!params.size) params.set("sort", "relevance");
     return params;
@@ -144,6 +149,28 @@
     if (!id) return envelope("invalid_input", null, "product");
     const result = await invoke("get_product_details", "product", `/api/products/${encodeURIComponent(id)}`);
     if (result?.status === "ok") feedback(`${result.data.product.title} details verified.`);
+    return result;
+  }
+  function renderComparison(result) {
+    const target = region("recommendations");
+    if (!target || result.status !== "ok") return;
+    const table = node("table", undefined, "comparison");
+    const head = node("tr");
+    for (const label of ["Product", "Delivered", "Stock", "Connection", "Weight", "Battery", "Noise control", "Warranty", "Member offer"]) head.append(node("th", label));
+    const thead = node("thead"); thead.append(head); table.append(thead);
+    const body = node("tbody");
+    for (const product of result.data.products) {
+      const row = node("tr");
+      for (const value of [product.title, money(product.delivered_price_pence), product.stock_status.replaceAll("_", " "), product.connection, product.weight_grams ? `${product.weight_grams} g` : "Not provided", product.battery, product.noise_control, product.warranty, product.member_offer_status.replaceAll("_", " ")]) row.append(node("td", value));
+      body.append(row);
+    }
+    table.append(body);
+    target.hidden = false;
+    target.replaceChildren(node("p", "Northmere comparison", "eyebrow"), node("h2", "Compared by delivered price"), table, node("p", "Read-only comparison. Your basket is unchanged and no purchase has been created.", "notice"));
+  }
+  async function compareProducts(input) {
+    const result = await invoke("compare_products", "product", "/api/products/compare", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input) });
+    if (result) renderComparison(result);
     return result;
   }
   async function viewProduct(input) {
@@ -612,8 +639,10 @@
     const readOnly = { readOnlyHint: true, untrustedContentHint: false };
     const mutating = { readOnlyHint: false, untrustedContentHint: false };
     const productId = { type: "string", enum: ids, description: "Merchant product identifier returned by search_products." };
+    const feature = { type: "string", enum: ["commuting", "home_listening", "lightweight", "over_ear", "noise_control"] };
     const tools = [
-      { name: "search_products", description: "Search the Northmere Audio catalogue by product name, model, or SKU.", inputSchema: schema({ query: { type: "string", minLength: 1, maxLength: 100 } }, ["query"]), annotations: readOnly, execute: searchProducts },
+      { name: "search_products", description: "Search products from the shopper's raw request with optional precise category, delivered-price, stock, connection and listening-use filters. Returns compact summaries with match reasons.", inputSchema: schema({ query: { type: "string", minLength: 1, maxLength: 100 }, category: { type: "string", enum: ["headphones", "speakers", "sources", "accessories"] }, max_delivered_price_pence: { type: "integer", minimum: 0 }, in_stock_only: { type: "boolean" }, connection: { type: "string", enum: ["wired", "wireless"] }, features: { type: "array", minItems: 1, maxItems: 5, uniqueItems: true, items: feature }, sort: { type: "string", enum: ["relevance", "delivered_price_asc", "delivered_price_desc", "weight_asc"] }, limit: { type: "integer", minimum: 1, maximum: 8 } }, ["query"]), annotations: readOnly, execute: searchProducts },
+      { name: "compare_products", description: "Compare two to four products by delivered price, stock, connection, weight, battery, noise control, warranty and member-offer status. Results are ordered by delivered price.", inputSchema: schema({ product_ids: { type: "array", minItems: 2, maxItems: 4, uniqueItems: true, items: productId } }, ["product_ids"]), annotations: readOnly, execute: compareProducts },
       { name: "view_product", description: "Open a product page from a merchant product identifier.", inputSchema: schema({ product_id: productId }, ["product_id"]), annotations: readOnly, execute: viewProduct },
       { name: "get_store_policies", description: "Read a Northmere delivery, returns, or member-offer policy.", inputSchema: schema({ topic: { type: "string", enum: ["delivery", "returns", "member_offers"] } }, ["topic"]), annotations: readOnly, execute: getStorePolicies },
       { name: "view_basket", description: "Revalidate and inspect this tab's reversible basket.", inputSchema: schema({}), annotations: readOnly, execute: viewBasket }

@@ -1,6 +1,6 @@
 # ElemKey
 
-ElemKey is a 16-product WebMCP storefront demonstration for the fictional retailer Northmere Audio. Public search, filtering, product details, policies and a reversible basket are shared by shoppers and agents; owner-managed member prices appear only after the shopper signs in themselves.
+ElemKey is a 16-product WebMCP storefront demonstration for the fictional retailer Northmere Audio. Compact, explainable structured search, delivered-price comparison, full product details, policies and a reversible basket are shared by shoppers and agents; owner-managed member prices appear only after the shopper signs in themselves.
 
 The demo stops at a reversible basket and explicitly non-payment checkout preview. It has no purchase endpoint, payment processor, order record, competitor-price input, customer identifier in a shopper tool schema, or managed production database.
 
@@ -55,6 +55,7 @@ The fixture stores only a `crypto.scrypt` salt/hash. All three runtime secrets m
 One Express service serves plain server-rendered HTML, CSS, browser JavaScript, local SVG product art, the existing shopper APIs, and five owner APIs used by both human controls and WebMCP handlers:
 
 - `GET /api/products/search` → `search_products`
+- `POST /api/products/compare` → `compare_products`
 - `POST /api/offers/evaluate` → `get_member_offer`
 - `POST /api/purchase-terms/verify` → `verify_purchase_terms`
 - `POST /api/basket/preview` → `prepare_basket`
@@ -68,13 +69,14 @@ One Express service serves plain server-rendered HTML, CSS, browser JavaScript, 
 
 `iron-session` encrypts/authenticates separate HttpOnly, SameSite=Lax member and owner cookies. Sessions have a 30-minute idle limit and eight-hour absolute limit. Node HMAC signs five-minute member quotes and owner previews. `data/offers.json` is schema validated at startup and replaced atomically on every immutable revision. The reversible basket remains in current-tab `sessionStorage` and is revalidated against the current winning offer on `/basket`.
 
-The browser feature-detects `document.modelContext`. Without it, the same journeys remain available through normal controls. Shopper pages keep their existing page-scoped tool sets. Signed-in `/admin/offers` registers only the five owner tools; both sign-in pages and checkout-preview register no tools. Every registration has an aborted page-lifecycle signal, and no schema accepts credentials, competitor evidence, or a purchase instruction.
+The browser feature-detects `document.modelContext`. Without it, the same journeys remain available through normal controls. `search_products` keeps the shopper's raw query and accepts optional category, delivered-price, stock, connection, listening-use, sort and limit fields; each compact result includes a `match_reason`. `compare_products` accepts two to four catalogue IDs and returns only shared decision attributes ordered by delivered price. Full records remain available from `get_product_details`. Shopper pages keep their existing page-scoped tool sets. Signed-in `/admin/offers` registers only the five owner tools; both sign-in pages and checkout-preview register no tools. Every registration has an aborted page-lifecycle signal, and no schema accepts credentials, competitor evidence, or a purchase instruction.
 
 ## Verification
 
 ```bash
 npm test
 BASE_URL=http://127.0.0.1:3000 npm run smoke
+E2E_BASE_URL=http://127.0.0.1:3000 npx playwright test test/shopper-prompts.e2e.spec.ts
 ```
 
 `npm test` runs TypeScript checking, compiled `node:test` domain/security/live-HTTP tests, and Playwright storefront/WebMCP wiring tests. Mock WebMCP proves local application wiring only. Local native discovery/execution is recorded in [test/local-docker-acceptance.md](test/local-docker-acceptance.md); public production evidence is recorded separately in [test/deployed-acceptance.md](test/deployed-acceptance.md).
@@ -94,6 +96,6 @@ The native test uses installed Chrome Canary with WebMCP testing features enable
 - Public source: https://github.com/sagarsea/elemkey
 - Local Docker: `http://127.0.0.1:3000`
 
-The Render smoke test, GitHub Actions, complete regression suite, native WebMCP journey, manual sign-in handoff, and ten fresh deployed Canary sessions are green. The service uses a persistent Render disk at `/data` and stops at a non-payment checkout preview.
+Production deploys are manual: each revision is first rebuilt and accepted in local Docker, then pushed to GitHub and deployed to Render. Both environments stop at a non-payment checkout preview.
 
 Licensed under the [MIT License](LICENSE).

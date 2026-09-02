@@ -124,6 +124,29 @@ test("product, policy, and filtered catalogue APIs return public merchant data",
   assert.equal((await fetch(`${origin}/api/store/policies?topic=orders`)).status, 400);
 });
 
+test("structured search and comparison APIs expose compact recoverable shopper facts", async () => {
+  const origin = await serve();
+  const search = await (await fetch(`${origin}/api/products/search?query=${encodeURIComponent("What is best for commuting?")}&category=headphones&in_stock_only=true&features=commuting&sort=relevance&limit=1`)).json();
+  assert.equal(search.status, "ok");
+  assert.deepEqual(search.data.products.map(({ id }: { id: string }) => id), ["product-vn9-snd"]);
+  assert.match(search.data.products[0].match_reason, /travel|noise cancelling/i);
+  assert.equal(JSON.stringify(search).length < 1500, true);
+
+  const compared = await fetch(`${origin}/api/products/compare`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ product_ids: ["product-ax7-blk", "product-mh2-slv", "product-vn9-snd"] })
+  });
+  assert.equal(compared.status, 200);
+  const comparison = await compared.json();
+  assert.deepEqual(comparison.data.products.map(({ product_id }: { product_id: string }) => product_id), ["product-vn9-snd", "product-mh2-slv", "product-ax7-blk"]);
+  assert.equal(comparison.data.products.every(({ member_offer_status }: { member_offer_status: string }) => member_offer_status === "sign_in_required"), true);
+  assert.equal(JSON.stringify(comparison).length < 1500, true);
+
+  const invalid = await fetch(`${origin}/api/products/compare`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ product_ids: ["product-vn9-snd"] }) });
+  assert.equal(invalid.status, 400);
+  assert.equal((await invalid.json()).error.code, "INVALID_INPUT");
+});
+
 test("public basket preparation needs no sign-in but keeps quantity and trust boundaries", async () => {
   const origin = await serve();
   const page = await fetch(`${origin}/products/TD3-SLV`);

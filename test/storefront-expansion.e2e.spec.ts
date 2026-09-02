@@ -47,10 +47,10 @@ test("WebMCP tools are additive, exact, lifecycle-bound, and page scoped", async
     await page.goto(path);
     return page.evaluate(() => (window as unknown as { __registrations: Array<{ name: string }> }).__registrations.map(({ name }) => name).sort());
   };
-  expect(await names("/")).toEqual(["get_store_policies", "search_products", "view_basket", "view_product"]);
-  expect(await names("/shop")).toEqual(["add_to_basket", "filter_products", "get_store_policies", "get_visible_results", "search_products", "view_basket", "view_product"]);
-  expect(await names("/products/AX7-BLK")).toEqual(["add_to_basket", "get_member_offer", "get_product_details", "get_store_policies", "prepare_basket", "search_products", "verify_purchase_terms", "view_basket", "view_product"]);
-  expect(await names("/basket")).toEqual(["get_store_policies", "remove_from_basket", "search_products", "view_basket", "view_product"]);
+  expect(await names("/")).toEqual(["compare_products", "get_store_policies", "search_products", "view_basket", "view_product"]);
+  expect(await names("/shop")).toEqual(["add_to_basket", "compare_products", "filter_products", "get_store_policies", "get_visible_results", "search_products", "view_basket", "view_product"]);
+  expect(await names("/products/AX7-BLK")).toEqual(["add_to_basket", "compare_products", "get_member_offer", "get_product_details", "get_store_policies", "prepare_basket", "search_products", "verify_purchase_terms", "view_basket", "view_product"]);
+  expect(await names("/basket")).toEqual(["compare_products", "get_store_policies", "remove_from_basket", "search_products", "view_basket", "view_product"]);
   expect(await names("/signin")).toEqual([]);
   expect(await names("/checkout-preview")).toEqual([]);
   await page.goto("/shop");
