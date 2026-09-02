@@ -26,10 +26,13 @@ test("real Chromium discovers and executes the complete local WebMCP journey", a
   }, { name, input });
 
   expect(await execute("search_products", { query: "AX7-BLK" })).toMatchObject({ status: "ok", ui_region: "product", data: { member_offer_prompt: "You may qualify for a special offer. Sign in to reveal your personal offer." } });
+  expect(await execute("search_products", { query: "wireless headphones under £400" })).toMatchObject({ status: "ok", data: { products: [{ id: "product-vn9-snd" }], applied_filters: { category: "headphones", max_delivered_price_pence: 40000, in_stock_only: true, connection: "wireless" } } });
   const commuting = await execute("search_products", { query: "What is best for commuting?", category: "headphones", in_stock_only: true, features: ["commuting"], sort: "relevance", limit: 1 }) as { data: { products: Array<{ id: string; match_reason: string }> } };
   expect(commuting.data.products).toEqual([expect.objectContaining({ id: "product-vn9-snd", match_reason: expect.stringMatching(/travel.*noise cancelling/i) })]);
-  const compared = await execute("compare_products", { product_ids: ["product-ax7-blk", "product-mh2-slv", "product-vn9-snd"] }) as { data: { products: Array<{ product_id: string }> } };
+  const compared = await execute("compare_products", { product_ids: ["product-ax7-blk", "product-mh2-slv", "product-vn9-snd"] }) as { data: { products: Array<{ product_id: string; battery: string; warranty: string }> } };
   expect(compared.data.products.map(({ product_id }) => product_id)).toEqual(["product-vn9-snd", "product-mh2-slv", "product-ax7-blk"]);
+  expect(compared.data.products.every(({ warranty }) => warranty === "2 years")).toBe(true);
+  expect(compared.data.products.find(({ product_id }) => product_id === "product-mh2-slv")?.battery).toBe("Not applicable");
   await expect(page.locator('[data-region="recommendations"]')).toContainText("Your basket is unchanged and no purchase has been created");
   expect(await execute("get_member_offer", { product_id: "product-ax7-blk" })).toMatchObject({ status: "sign_in_required", ui_region: "offer" });
   await expect(page.locator('[data-region="offer"]')).toContainText("Sign in to reveal");

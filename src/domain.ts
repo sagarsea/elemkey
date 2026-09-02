@@ -149,6 +149,23 @@ const productSummary = (product: Product, reason: string) => Object.freeze({
   match_reason: reason
 });
 
+function inferSearchFilters(query: string) {
+  const text = query.toLocaleLowerCase("en-GB");
+  const price = text.match(/(?:under|below|up to|maximum(?: of)?|max(?:imum)?(?: of)?)\s*£\s*(\d{1,7}(?:\.\d{1,2})?)\b/);
+  const requestedFeatures = features.filter((feature) => feature === "commuting" ? /commut|travel/.test(text) : feature === "home_listening" ? /home listening/.test(text) : feature === "lightweight" ? /lightweight/.test(text) : feature === "over_ear" ? /over[- ]ear/.test(text) : /noise (?:control|cancell)/.test(text));
+  const category = categories.find((candidate) => new RegExp(`\\b${candidate.replace(/s$/, "")}s?\\b`).test(text)) ?? (requestedFeatures.length ? "headphones" as const : undefined);
+  const connection = /\bwireless\b/.test(text) ? "wireless" as const : /\bwired\b/.test(text) ? "wired" as const : undefined;
+  if (!price && !requestedFeatures.length && !(category && connection)) return {};
+  return {
+    ...(category ? { category } : {}),
+    ...(price ? { max_delivered_price_pence: Math.round(Number(price[1]) * 100) } : {}),
+    in_stock_only: true,
+    ...(connection ? { connection } : {}),
+    ...(requestedFeatures.length ? { features: requestedFeatures } : {}),
+    sort: price ? "delivered_price_asc" as const : "relevance" as const
+  };
+}
+
 export function searchProducts(input: unknown, catalogue: Product | readonly Product[], now = new Date()) {
   const invalid = () => ({ status: "invalid_input" as const, observed_at: now.toISOString(), data: null, error: { code: "INVALID_INPUT", message: "Enter a product name, model, SKU, or valid catalogue filters.", retryable: false }, ui_region: "product" as const });
   if (input === null || typeof input !== "object" || Array.isArray(input)) return invalid();
@@ -166,6 +183,9 @@ export function searchProducts(input: unknown, catalogue: Product | readonly Pro
   if (record.features !== undefined && (!Array.isArray(record.features) || record.features.length < 1 || record.features.length > features.length || new Set(record.features).size !== record.features.length || record.features.some((feature) => !features.includes(feature as Feature)))) return invalid();
   if (record.sort !== undefined && !searchSorts.includes(record.sort as typeof searchSorts[number])) return invalid();
   if (record.limit !== undefined && (!integer(record.limit, 1) || (record.limit as number) > 8)) return invalid();
+  const explicitlyStructured = ["category", "max_price_pence", "max_delivered_price_pence", "in_stock_only", "connection", "features"].some((key) => record[key] !== undefined);
+  const inferred: Record<string, unknown> = explicitlyStructured ? {} : inferSearchFilters(query);
+  const effective: Record<string, unknown> = { ...inferred, ...record };
   const products: readonly Product[] = Array.isArray(catalogue) ? catalogue : [catalogue as Product];
   const needle = query.toLocaleLowerCase("en-GB");
   const score = (product: Product) => {
@@ -176,23 +196,23 @@ export function searchProducts(input: unknown, catalogue: Product | readonly Pro
     if (fields.some((value) => value.startsWith(needle))) return 70;
     return fields.some((value) => value.includes(needle)) ? 50 : -1;
   };
-  const maximum = record.max_price_pence as number | undefined;
-  const deliveredMaximum = record.max_delivered_price_pence as number | undefined;
-  const requestedFeatures = record.features as Feature[] | undefined;
-  const structured = ["category", "max_price_pence", "max_delivered_price_pence", "in_stock_only", "connection", "features"].some((key) => record[key] !== undefined);
+  const maximum = effective.max_price_pence as number | undefined;
+  const deliveredMaximum = effective.max_delivered_price_pence as number | undefined;
+  const requestedFeatures = effective.features as Feature[] | undefined;
+  const structured = explicitlyStructured || Object.keys(inferred).length > 0;
   let matches = products.filter((product) => (!query || structured || score(product) >= 0)
-    && (record.category === undefined || product.category === record.category)
+    && (effective.category === undefined || product.category === effective.category)
     && (maximum === undefined || product.unit_price_pence <= maximum)
     && (deliveredMaximum === undefined || product.unit_price_pence + product.delivery_pence <= deliveredMaximum)
-    && (record.in_stock_only !== true || product.stock_quantity > 0)
-    && (record.connection === undefined || isConnection(product, record.connection as Connection))
+    && (effective.in_stock_only !== true || product.stock_quantity > 0)
+    && (effective.connection === undefined || isConnection(product, effective.connection as Connection))
     && (!requestedFeatures || requestedFeatures.every((feature) => featureScore(product, feature) > 0)));
-  const sort = record.sort ?? "relevance";
+  const sort = effective.sort ?? "relevance";
   const relevance = (product: Product) => Math.max(0, score(product)) + (requestedFeatures?.reduce((total, feature) => total + featureScore(product, feature), 0) ?? 0) * 10;
   matches = [...matches].sort(sort === "price_asc" ? (a, b) => a.unit_price_pence - b.unit_price_pence || a.sku.localeCompare(b.sku) : sort === "price_desc" ? (a, b) => b.unit_price_pence - a.unit_price_pence || a.sku.localeCompare(b.sku) : sort === "delivered_price_asc" ? (a, b) => a.unit_price_pence + a.delivery_pence - b.unit_price_pence - b.delivery_pence || a.sku.localeCompare(b.sku) : sort === "delivered_price_desc" ? (a, b) => b.unit_price_pence + b.delivery_pence - a.unit_price_pence - a.delivery_pence || a.sku.localeCompare(b.sku) : sort === "weight_asc" ? (a, b) => (weightFor(a) ?? Infinity) - (weightFor(b) ?? Infinity) || a.sku.localeCompare(b.sku) : sort === "name" ? (a, b) => a.title.localeCompare(b.title) : (a, b) => relevance(b) - relevance(a) || a.unit_price_pence + a.delivery_pence - b.unit_price_pence - b.delivery_pence);
   const total = matches.length;
-  const listed = matches.slice(0, (record.limit as number | undefined) ?? 6).map((product) => productSummary(product, matchReason(product, record, score(product))));
-  if (listed.length) return { status: "ok" as const, observed_at: now.toISOString(), data: { query, products: listed, result_count: listed.length, total_matches: total }, error: null, ui_region: "product" as const };
+  const listed = matches.slice(0, (effective.limit as number | undefined) ?? 6).map((product) => productSummary(product, matchReason(product, effective, score(product))));
+  if (listed.length) return { status: "ok" as const, observed_at: now.toISOString(), data: { query, products: listed, result_count: listed.length, total_matches: total, ...(Object.keys(inferred).length ? { applied_filters: inferred } : {}) }, error: null, ui_region: "product" as const };
   const compound = !structured && /headphones?/i.test(query) && /(wireless|wired)/i.test(query) && /£?\d+/.test(query);
   const suggested_filters = compound ? {
     category: "headphones" as const,
@@ -213,8 +233,8 @@ export function compareProducts(input: unknown, catalogue: readonly Product[], m
     delivered_price_pence: product.unit_price_pence + product.delivery_pence,
     stock_status: product.stock_quantity > 0 ? "in_stock" as const : "out_of_stock" as const,
     connection: connectionFor(product), weight_grams: weightFor(product),
-    battery: product.specifications.Battery ?? "Not provided",
-    noise_control: noiseControlFor(product), warranty: "Not provided" as const,
+    battery: product.specifications.Battery ?? (isConnection(product, "wired") ? "Not applicable" : "Not provided"),
+    noise_control: noiseControlFor(product), warranty: product.specifications.Warranty ?? "Not provided",
     member_offer_status: memberOfferStatus(product)
   }));
   return { status: "ok" as const, observed_at: now.toISOString(), data: { products, ordered_by: "delivered_price_asc" as const }, error: null, ui_region: "product" as const };

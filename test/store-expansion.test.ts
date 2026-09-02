@@ -75,13 +75,22 @@ test("shopper prompts produce compact explainable searches and one delivered-pri
   assert.equal(headphonesOnly.data?.products.length, 4);
   assert.equal(headphonesOnly.data?.products.every(({ category }) => category === "headphones"), true);
 
-  const empty = searchProducts({ query: "wireless headphones under £400" }, cfg.products, instant);
-  assert.deepEqual(empty.data, {
-    query: "wireless headphones under £400",
-    products: [], result_count: 0, total_matches: 0,
-    reason: "compound_query_not_supported",
-    suggested_filters: { category: "headphones", max_delivered_price_pence: 40000, connection: "wireless" }
-  });
+  const rawWireless = searchProducts({ query: "wireless headphones under £400" }, cfg.products, instant);
+  assert.equal(rawWireless.status, "ok");
+  if (rawWireless.status !== "ok") assert.fail();
+  assert.deepEqual(rawWireless.data?.products.map(({ id }) => id), ["product-vn9-snd"]);
+  assert.deepEqual(rawWireless.data?.applied_filters, { category: "headphones", max_delivered_price_pence: 40000, in_stock_only: true, connection: "wireless", sort: "delivered_price_asc" });
+
+  const rawCommuting = searchProducts({ query: "commuting" }, cfg.products, instant);
+  assert.equal(rawCommuting.status, "ok");
+  if (rawCommuting.status !== "ok") assert.fail();
+  assert.deepEqual(rawCommuting.data?.products.map(({ id }) => id), ["product-vn9-snd", "product-ax7-blk"]);
+  assert.deepEqual(rawCommuting.data?.applied_filters, { category: "headphones", in_stock_only: true, features: ["commuting"], sort: "relevance" });
+
+  const rawPrice = searchProducts({ query: "under £300" }, cfg.products, instant);
+  assert.equal(rawPrice.status, "ok");
+  assert.equal(rawPrice.data?.total_matches, 7);
+  assert.equal(rawPrice.data?.products.every(({ delivered_total_pence }) => delivered_total_pence < 30000), true);
 
   const compared = compareProducts([
     "product-ax7-blk", "product-mh2-slv", "product-vn9-snd"
@@ -94,7 +103,8 @@ test("shopper prompts produce compact explainable searches and one delivered-pri
   assert.deepEqual(compared.data?.products.map(({ member_offer_status }) => member_offer_status), ["sign_in_required", "sign_in_required", "sign_in_required"]);
   assert.deepEqual(compared.data?.products.map(({ weight_grams }) => weight_grams), [262, 248, 286]);
   assert.equal(compared.data?.products[0]?.noise_control, "Hybrid noise cancelling");
-  assert.equal(compared.data?.products[0]?.warranty, "Not provided");
+  assert.equal(compared.data?.products.every(({ warranty }) => warranty === "2 years"), true);
+  assert.equal(compared.data?.products.find(({ product_id }) => product_id === "product-mh2-slv")?.battery, "Not applicable");
 });
 
 test("member offers cover the four active SKUs without changing AX7 arithmetic", () => {

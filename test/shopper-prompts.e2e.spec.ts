@@ -24,6 +24,17 @@ test("exact shopper prompts select goal-focused tools, explain results, update v
   await installWebMCP(page);
   await page.goto("/shop");
 
+  const rawWireless = await execute(page, "search_products", { query: "wireless headphones under £400" });
+  expect(rawWireless.result).toMatchObject({ status: "ok", data: { applied_filters: { category: "headphones", max_delivered_price_pence: 40000, in_stock_only: true, connection: "wireless" } } });
+  expect(rawWireless.result.data.products.map(({ id }: { id: string }) => id)).toEqual(["product-vn9-snd"]);
+
+  const rawCommuting = await execute(page, "search_products", { query: "commuting" });
+  expect(rawCommuting.result.data.products.map(({ id }: { id: string }) => id)).toEqual(["product-vn9-snd", "product-ax7-blk"]);
+
+  const rawPrice = await execute(page, "search_products", { query: "under £300" });
+  expect(rawPrice.result).toMatchObject({ status: "ok", data: { total_matches: 7 } });
+  expect(rawPrice.result.data.products.every(({ delivered_total_pence }: { delivered_total_pence: number }) => delivered_total_pence < 30000)).toBe(true);
+
   const wirelessArgs = { query: "Show me wireless headphones under £400.", category: "headphones", max_delivered_price_pence: 40000, connection: "wireless", sort: "delivered_price_asc" };
   const wireless = await execute(page, "search_products", wirelessArgs);
   expect(wireless).toMatchObject({ selected_tool: "search_products", arguments: wirelessArgs, result: { status: "ok", ui_region: "product" } });
@@ -53,6 +64,8 @@ test("exact shopper prompts select goal-focused tools, explain results, update v
   const compared = await execute(page, "compare_products", compareArgs);
   expect(compared).toMatchObject({ selected_tool: "compare_products", arguments: compareArgs, result: { status: "ok" } });
   expect(compared.result.data.products.map(({ product_id }: { product_id: string }) => product_id)).toEqual(["product-vn9-snd", "product-mh2-slv", "product-ax7-blk"]);
+  expect(compared.result.data.products.every(({ warranty }: { warranty: string }) => warranty === "2 years")).toBe(true);
+  expect(compared.result.data.products.find(({ product_id }: { product_id: string }) => product_id === "product-mh2-slv").battery).toBe("Not applicable");
   await expect(page.locator('[data-region="recommendations"]')).toContainText("Compared by delivered price");
   await expect(page.locator('[data-region="recommendations"]')).toContainText("Your basket is unchanged and no purchase has been created");
 

@@ -208,10 +208,11 @@ export function createApp(config: AppConfig, options: AppOptions = {}) {
     const claims = verification.claims;
     const publicTotal = product.unit_price_pence + product.delivery_pence;
     const verifiedAt = now().toISOString();
+    const warranty = product.specifications.Warranty;
     return res.json({ status: "verified", observed_at: verifiedAt, data: {
       merchant: "Northmere Audio",
       product: { product_id: product.id, title: product.title, sku: claims.sku, variant: product.variant, quantity: 1 },
-      terms: { currency: claims.currency, unit_price_pence: claims.unit_price_pence, public_delivery_pence: product.delivery_pence, public_delivered_total_pence: publicTotal, discount_pence: claims.discount_pence, member_delivery_pence: claims.delivery_pence, delivered_total_pence: claims.delivered_total_pence, savings_pence: publicTotal - claims.delivered_total_pence, stock_status: "in_stock", stock_quantity: claims.stock_quantity, delivery_estimate: product.delivery_estimate, returns: { window_days: 30, summary: policies.returns.body }, warranty: { status: "not_provided", summary: "Warranty information is not provided by this demonstration." } },
+      terms: { currency: claims.currency, unit_price_pence: claims.unit_price_pence, public_delivery_pence: product.delivery_pence, public_delivered_total_pence: publicTotal, discount_pence: claims.discount_pence, member_delivery_pence: claims.delivery_pence, delivered_total_pence: claims.delivered_total_pence, savings_pence: publicTotal - claims.delivered_total_pence, stock_status: "in_stock", stock_quantity: claims.stock_quantity, delivery_estimate: product.delivery_estimate, returns: { window_days: 30, summary: policies.returns.body }, warranty: warranty ? { status: "provided", summary: warranty } : { status: "not_provided", summary: "Warranty information is not provided by this demonstration." } },
       benefit: { rule_id: claims.rule_id, rule_version: claims.rule_version, reason: winner.reason },
       verified_at: verifiedAt, valid_until: claims.expires_at,
       privacy: { credentials_shared: false, competitor_data_shared: false, purchase_created: false }
