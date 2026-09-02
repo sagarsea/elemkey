@@ -11,6 +11,7 @@ test("ordinary storefront completes the reversible journey without WebMCP", asyn
   await page.getByLabel("Password").fill("ElemKeyDemo2026!");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/products\/AX7-BLK/);
+  await page.waitForLoadState("load");
   await page.getByRole("button", { name: "Get my member offer" }).click();
   await expect(page.locator('[data-region="offer"]')).toContainText("£474.05");
   await page.getByRole("button", { name: "Prepare basket for review" }).click();
@@ -83,6 +84,7 @@ test("network failure preserves public state, newest search wins, and unknown of
   await page.getByLabel("Email").fill("sagar@example.test");
   await page.getByLabel("Password").fill("ElemKeyDemo2026!");
   await page.getByRole("button", { name: "Sign in" }).click();
+  await page.waitForLoadState("load");
   await page.route("**/api/offers/evaluate", (route) => route.fulfill({ contentType: "application/json", body: JSON.stringify({ status: "unknown_new_status", data: { delivered_total_pence: 1 }, error: null, ui_region: "offer" }) }));
   await page.getByRole("button", { name: "Get my member offer" }).click();
   await expect(page.locator('[data-region="offer"]')).toContainText("could not be shown safely");
@@ -94,8 +96,10 @@ test("safe trace excludes inputs, identity, credentials, and quotes; logout clea
   await page.getByLabel("Email").fill("sagar@example.test");
   await page.getByLabel("Password").fill("ElemKeyDemo2026!");
   await page.getByRole("button", { name: "Sign in" }).click();
+  await page.waitForLoadState("load");
   await page.getByRole("button", { name: "Get my member offer" }).click();
   await page.getByRole("button", { name: "Prepare basket for review" }).click();
+  await expect(page.locator('[data-region="basket"]')).toContainText("£474.05");
   const trace = await page.evaluate(() => sessionStorage.getItem("elemkey.trace"));
   expect(trace).toBeTruthy();
   expect(trace).not.toMatch(/sagar|ElemKeyDemo|offer_quote|product_id|eyJ/i);

@@ -11,6 +11,7 @@ async function ownerSignIn(page: Page) {
   await page.getByLabel("Owner password").fill("NorthmereOwner2026!");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/admin\/offers/);
+  await page.waitForLoadState("load");
 }
 
 test("owner sign-in exposes no tools and the owner workspace exposes exactly five lifecycle-bound tools", async ({ page }) => {
@@ -20,6 +21,8 @@ test("owner sign-in exposes no tools and the owner workspace exposes exactly fiv
   await page.getByLabel("Owner email").fill("owner@northmere.test");
   await page.getByLabel("Owner password").fill("NorthmereOwner2026!");
   await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL(/\/admin\/offers/);
+  await page.waitForLoadState("load");
   const tools = await page.evaluate(() => (window as unknown as { __registrations: Array<{ name: string; annotations: unknown; hasSignal: boolean }> }).__registrations.map(({ name, annotations, hasSignal }) => ({ name, annotations, hasSignal })));
   expect(tools.map(({ name }) => name)).toEqual(["list_member_offers", "preview_member_offer", "create_member_offer", "revise_member_offer", "set_member_offer_status"]);
   expect(tools.every(({ hasSignal }) => hasSignal)).toBe(true);

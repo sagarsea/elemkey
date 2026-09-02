@@ -5,6 +5,7 @@ async function signIn(page: Page, returnTo = "/account") {
   await page.getByLabel("Email").fill("sagar@example.test");
   await page.getByLabel("Password").fill("ElemKeyDemo2026!");
   await page.getByRole("button", { name: "Sign in" }).click();
+  await page.waitForLoadState("load");
 }
 
 const installToolCapture = async (page: Page) => page.addInitScript(() => {
@@ -172,6 +173,7 @@ test("sign-out removes protected lines but retains valid public lines", async ({
   await signIn(page);
   await page.getByRole("button", { name: "Check offer for Auralux X7 Studio Headphones" }).click();
   await page.getByRole("button", { name: "Add member price for Auralux X7 Studio Headphones" }).click();
+  await expect(page.locator('[data-region="basket"]')).toContainText("£474.05");
   await page.getByRole("button", { name: "Sign out" }).click();
   const stored = await page.evaluate(() => JSON.parse(sessionStorage.getItem("elemkey.basket") || "[]"));
   expect(stored).toHaveLength(1);
