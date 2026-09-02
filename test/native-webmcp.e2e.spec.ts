@@ -27,6 +27,9 @@ test("real Chromium discovers and executes the complete local WebMCP journey", a
 
   expect(await execute("search_products", { query: "AX7-BLK" })).toMatchObject({ status: "ok", ui_region: "product", data: { member_offer_prompt: "You may qualify for a special offer. Sign in to reveal your personal offer." } });
   expect(await execute("search_products", { query: "wireless headphones under £400" })).toMatchObject({ status: "ok", data: { products: [{ id: "product-vn9-snd" }], applied_filters: { category: "headphones", max_delivered_price_pence: 40000, in_stock_only: true, connection: "wireless" } } });
+  const rawHeadphones = await execute("search_products", { query: "headphones" }) as { data: { products: Array<{ category: string }> } };
+  expect(rawHeadphones.data.products.every(({ category }) => category === "headphones")).toBe(true);
+  expect(await execute("search_products", { query: "wireless headphones under £100" })).toMatchObject({ status: "empty", data: { suggested_filters: { category: "headphones", max_delivered_price_pence: 28899, in_stock_only: true, connection: "wireless" } } });
   const commuting = await execute("search_products", { query: "What is best for commuting?", category: "headphones", in_stock_only: true, features: ["commuting"], sort: "relevance", limit: 1 }) as { data: { products: Array<{ id: string; match_reason: string }> } };
   expect(commuting.data.products).toEqual([expect.objectContaining({ id: "product-vn9-snd", match_reason: expect.stringMatching(/travel.*noise cancelling/i) })]);
   const compared = await execute("compare_products", { product_ids: ["product-ax7-blk", "product-mh2-slv", "product-vn9-snd"] }) as { data: { products: Array<{ product_id: string; battery: string; warranty: string }> } };

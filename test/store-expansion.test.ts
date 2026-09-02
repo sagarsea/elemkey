@@ -81,6 +81,14 @@ test("shopper prompts produce compact explainable searches and one delivered-pri
   assert.deepEqual(rawWireless.data?.products.map(({ id }) => id), ["product-vn9-snd"]);
   assert.deepEqual(rawWireless.data?.applied_filters, { category: "headphones", max_delivered_price_pence: 40000, in_stock_only: true, connection: "wireless", sort: "delivered_price_asc" });
 
+  const rawHeadphones = searchProducts({ query: "headphones" }, cfg.products, instant);
+  assert.equal(rawHeadphones.status, "ok");
+  assert.equal(rawHeadphones.data?.products.every(({ category }) => category === "headphones"), true);
+
+  const noAffordableWireless = searchProducts({ query: "wireless headphones under £100" }, cfg.products, instant);
+  assert.equal(noAffordableWireless.status, "empty");
+  assert.deepEqual(noAffordableWireless.data?.suggested_filters, { category: "headphones", max_delivered_price_pence: 28899, in_stock_only: true, connection: "wireless", sort: "delivered_price_asc" });
+
   const rawCommuting = searchProducts({ query: "commuting" }, cfg.products, instant);
   assert.equal(rawCommuting.status, "ok");
   if (rawCommuting.status !== "ok") assert.fail();

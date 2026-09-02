@@ -155,7 +155,7 @@ function inferSearchFilters(query: string) {
   const requestedFeatures = features.filter((feature) => feature === "commuting" ? /commut|travel/.test(text) : feature === "home_listening" ? /home listening/.test(text) : feature === "lightweight" ? /lightweight/.test(text) : feature === "over_ear" ? /over[- ]ear/.test(text) : /noise (?:control|cancell)/.test(text));
   const category = categories.find((candidate) => new RegExp(`\\b${candidate.replace(/s$/, "")}s?\\b`).test(text)) ?? (requestedFeatures.length ? "headphones" as const : undefined);
   const connection = /\bwireless\b/.test(text) ? "wireless" as const : /\bwired\b/.test(text) ? "wired" as const : undefined;
-  if (!price && !requestedFeatures.length && !(category && connection)) return {};
+  if (!price && !requestedFeatures.length && !category && !connection) return {};
   return {
     ...(category ? { category } : {}),
     ...(price ? { max_delivered_price_pence: Math.round(Number(price[1]) * 100) } : {}),
@@ -196,25 +196,28 @@ export function searchProducts(input: unknown, catalogue: Product | readonly Pro
     if (fields.some((value) => value.startsWith(needle))) return 70;
     return fields.some((value) => value.includes(needle)) ? 50 : -1;
   };
-  const maximum = effective.max_price_pence as number | undefined;
   const deliveredMaximum = effective.max_delivered_price_pence as number | undefined;
   const requestedFeatures = effective.features as Feature[] | undefined;
   const structured = explicitlyStructured || Object.keys(inferred).length > 0;
-  let matches = products.filter((product) => (!query || structured || score(product) >= 0)
-    && (effective.category === undefined || product.category === effective.category)
-    && (maximum === undefined || product.unit_price_pence <= maximum)
-    && (deliveredMaximum === undefined || product.unit_price_pence + product.delivery_pence <= deliveredMaximum)
-    && (effective.in_stock_only !== true || product.stock_quantity > 0)
-    && (effective.connection === undefined || isConnection(product, effective.connection as Connection))
-    && (!requestedFeatures || requestedFeatures.every((feature) => featureScore(product, feature) > 0)));
+  const passes = (product: Product, filters: Record<string, unknown>) =>
+    (filters.category === undefined || product.category === filters.category)
+    && (filters.max_price_pence === undefined || product.unit_price_pence <= (filters.max_price_pence as number))
+    && (filters.max_delivered_price_pence === undefined || product.unit_price_pence + product.delivery_pence <= (filters.max_delivered_price_pence as number))
+    && (filters.in_stock_only !== true || product.stock_quantity > 0)
+    && (filters.connection === undefined || isConnection(product, filters.connection as Connection))
+    && (filters.features === undefined || (filters.features as Feature[]).every((feature) => featureScore(product, feature) > 0));
+  let matches = products.filter((product) => (!query || structured || score(product) >= 0) && passes(product, effective));
   const sort = effective.sort ?? "relevance";
   const relevance = (product: Product) => Math.max(0, score(product)) + (requestedFeatures?.reduce((total, feature) => total + featureScore(product, feature), 0) ?? 0) * 10;
   matches = [...matches].sort(sort === "price_asc" ? (a, b) => a.unit_price_pence - b.unit_price_pence || a.sku.localeCompare(b.sku) : sort === "price_desc" ? (a, b) => b.unit_price_pence - a.unit_price_pence || a.sku.localeCompare(b.sku) : sort === "delivered_price_asc" ? (a, b) => a.unit_price_pence + a.delivery_pence - b.unit_price_pence - b.delivery_pence || a.sku.localeCompare(b.sku) : sort === "delivered_price_desc" ? (a, b) => b.unit_price_pence + b.delivery_pence - a.unit_price_pence - a.delivery_pence || a.sku.localeCompare(b.sku) : sort === "weight_asc" ? (a, b) => (weightFor(a) ?? Infinity) - (weightFor(b) ?? Infinity) || a.sku.localeCompare(b.sku) : sort === "name" ? (a, b) => a.title.localeCompare(b.title) : (a, b) => relevance(b) - relevance(a) || a.unit_price_pence + a.delivery_pence - b.unit_price_pence - b.delivery_pence);
   const total = matches.length;
   const listed = matches.slice(0, (effective.limit as number | undefined) ?? 6).map((product) => productSummary(product, matchReason(product, effective, score(product))));
   if (listed.length) return { status: "ok" as const, observed_at: now.toISOString(), data: { query, products: listed, result_count: listed.length, total_matches: total, ...(Object.keys(inferred).length ? { applied_filters: inferred } : {}) }, error: null, ui_region: "product" as const };
+  const relaxed = { ...effective };
+  delete relaxed.max_delivered_price_pence;
+  const closest = deliveredMaximum === undefined ? undefined : products.filter((product) => passes(product, relaxed)).sort((a, b) => a.unit_price_pence + a.delivery_pence - b.unit_price_pence - b.delivery_pence)[0];
   const compound = !structured && /headphones?/i.test(query) && /(wireless|wired)/i.test(query) && /£?\d+/.test(query);
-  const suggested_filters = compound ? {
+  const suggested_filters = Object.keys(inferred).length ? { ...inferred, ...(closest ? { max_delivered_price_pence: closest.unit_price_pence + closest.delivery_pence } : {}) } : compound ? {
     category: "headphones" as const,
     max_delivered_price_pence: Number(query.match(/£?(\d+)/)?.[1]) * 100,
     connection: /wireless/i.test(query) ? "wireless" as const : "wired" as const
