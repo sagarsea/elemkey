@@ -39,6 +39,17 @@ test("retail routes, canonical products, and recovery are complete", async () =>
   assert.match(await missing.text(), /Return to the shop/);
 });
 
+test("every HTML page includes Google Tag Manager at the document boundaries", async () => {
+  const origin = await serve();
+  const paths = ["/", "/shop", "/products/AX7-BLK", "/account", "/policies/delivery", "/signin", "/admin/signin", "/basket", "/checkout-preview", "/offer-rule"];
+  for (const path of paths) {
+    const html = await (await fetch(origin + path)).text();
+    assert.match(html, /<head><!-- Google Tag Manager --><script>\(function\(w,d,s,l,i\)/, path);
+    assert.match(html, /googletagmanager\.com\/gtm\.js\?id='\+i\+dl/, path);
+    assert.match(html, /<body[^>]*><!-- Google Tag Manager \(noscript\) --><noscript><iframe src="https:\/\/www\.googletagmanager\.com\/ns\.html\?id=GTM-5D5LMMGL"/, path);
+  }
+});
+
 test("product pages expose canonical, descriptive, machine-readable merchant facts", async () => {
   const origin = await serve();
   const publicOrigin = "https://elemkey.onrender.com";
@@ -139,7 +150,10 @@ test("storefront assets and accessibility basics are local and complete", async 
   for (const landmark of ["<header", "<main", "<footer", "aria-label=\"Primary\"", "aria-label=\"Filter products\""]) assert.match(html, new RegExp(landmark));
   assert.match(html, /Skip to content/);
   assert.match(html, /<label>Category/);
-  assert.doesNotMatch(html, /https?:\/\//);
+  assert.deepEqual(html.match(/https?:\/\/[^'"<\s]+/g), [
+    "https://www.googletagmanager.com/gtm.js?id=",
+    "https://www.googletagmanager.com/ns.html?id=GTM-5D5LMMGL"
+  ]);
   assert.equal(existsSync("public/favicon.svg"), true);
   assert.match(html, /href="\/favicon\.svg"/);
   const home = await (await fetch(origin)).text();
