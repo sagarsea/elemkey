@@ -101,10 +101,9 @@ test("account preserves signed-out copy and signed-in offers follow active rules
   assert.match(html, /Active membership/);
   assert.match(html, /Order history is not part of this demonstration/);
   assert.match(html, /href="\/policies\/member_offers"/);
-  assert.equal((html.match(/data-offer-product-id=/g) ?? []).length, 4);
-  for (const sku of ["AX7-BLK", "VN9-SND", "FS8-WAL", "NT2-WAL"]) assert.equal((html.match(new RegExp(sku, "g")) ?? []).length, 1, sku);
-  for (const sku of ["MH2-SLV", "DE1-WHT"]) assert.doesNotMatch(html, new RegExp(sku));
-  assert.equal((html.match(/<article class="member-offer-row"/g) ?? []).length, 4);
+  assert.equal((html.match(/data-offer-product-id=/g) ?? []).length, config.products.length);
+  for (const { sku } of config.products) assert.equal((html.match(new RegExp(sku, "g")) ?? []).length, 1, sku);
+  assert.equal((html.match(/<article class="member-offer-row"/g) ?? []).length, config.products.length);
   assert.equal((html.match(/aria-live="polite"/g) ?? []).length >= 4, true);
 });
 
@@ -129,8 +128,23 @@ test("structured search and comparison APIs expose compact recoverable shopper f
   const search = await (await fetch(`${origin}/api/products/search?query=${encodeURIComponent("What is best for commuting?")}&category=headphones&in_stock_only=true&features=commuting&sort=relevance&limit=1`)).json();
   assert.equal(search.status, "ok");
   assert.deepEqual(search.data.products.map(({ id }: { id: string }) => id), ["product-vn9-snd"]);
+  assert.equal(search.data.products[0].member_offer_status, "available_after_sign_in");
+  assert.deepEqual(search.data.products[0].member_offer_preview, {
+    status: "guaranteed_after_sign_in",
+    baseline_discount_percent: 5,
+    personalized_discount_range_percent: { minimum: 5, maximum: 15 },
+    maximum_member_total_pence: 26505,
+    delivery_pence: 0,
+    owner_targeted_offer_may_be_better: true
+  });
   assert.match(search.data.products[0].match_reason, /travel|noise cancelling/i);
   assert.equal(JSON.stringify(search).length < 1500, true);
+
+  const mixed = await (await fetch(`${origin}/api/products/search?query=${encodeURIComponent("Show me wireless headphones under £400.")}&category=headphones&max_delivered_price_pence=40000&connection=wireless&sort=delivered_price_asc`)).json();
+  assert.deepEqual(mixed.data.products.map(({ id, member_offer_status }: { id: string; member_offer_status: string }) => [id, member_offer_status]), [
+    ["product-de1-wht", "not_guaranteed"],
+    ["product-vn9-snd", "available_after_sign_in"]
+  ]);
 
   const compared = await fetch(`${origin}/api/products/compare`, {
     method: "POST", headers: { "content-type": "application/json" },

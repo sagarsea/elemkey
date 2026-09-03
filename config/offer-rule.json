@@ -1,6 +1,18 @@
 [
   { "rule_id": "MEMBER-5-FREE", "version": 1, "status": "active", "product_sku": "AX7-BLK", "authenticated_customer": true, "discount_percent": 5, "delivery_pence": 0 },
+  { "rule_id": "MEMBER-5-FREE", "version": 1, "status": "active", "product_sku": "MH2-SLV", "authenticated_customer": true, "discount_percent": 5, "delivery_pence": 0 },
   { "rule_id": "MEMBER-5-FREE", "version": 1, "status": "active", "product_sku": "VN9-SND", "authenticated_customer": true, "discount_percent": 5, "delivery_pence": 0 },
+  { "rule_id": "MEMBER-5-FREE", "version": 1, "status": "active", "product_sku": "DE1-WHT", "authenticated_customer": true, "discount_percent": 5, "delivery_pence": 0 },
   { "rule_id": "MEMBER-5-FREE", "version": 1, "status": "active", "product_sku": "FS8-WAL", "authenticated_customer": true, "discount_percent": 5, "delivery_pence": 0 },
-  { "rule_id": "MEMBER-5-FREE", "version": 1, "status": "active", "product_sku": "NT2-WAL", "authenticated_customer": true, "discount_percent": 5, "delivery_pence": 0 }
+  { "rule_id": "MEMBER-5-FREE", "version": 1, "status": "active", "product_sku": "CC4-BLK", "authenticated_customer": true, "discount_percent": 5, "delivery_pence": 0 },
+  { "rule_id": "MEMBER-5-FREE", "version": 1, "status": "active", "product_sku": "HO1-CRM", "authenticated_customer": true, "discount_percent": 5, "delivery_pence": 0 },
+  { "rule_id": "MEMBER-5-FREE", "version": 1, "status": "active", "product_sku": "AF12-BLK", "authenticated_customer": true, "discount_percent": 5, "delivery_pence": 0 },
+  { "rule_id": "MEMBER-5-FREE", "version": 1, "status": "active", "product_sku": "NT2-WAL", "authenticated_customer": true, "discount_percent": 5, "delivery_pence": 0 },
+  { "rule_id": "MEMBER-5-FREE", "version": 1, "status": "active", "product_sku": "TD3-SLV", "authenticated_customer": true, "discount_percent": 5, "delivery_pence": 0 },
+  { "rule_id": "MEMBER-5-FREE", "version": 1, "status": "active", "product_sku": "SR1-BLK", "authenticated_customer": true, "discount_percent": 5, "delivery_pence": 0 },
+  { "rule_id": "MEMBER-5-FREE", "version": 1, "status": "active", "product_sku": "RA5-SLV", "authenticated_customer": true, "discount_percent": 5, "delivery_pence": 0 },
+  { "rule_id": "MEMBER-5-FREE", "version": 1, "status": "active", "product_sku": "AS1-BLK", "authenticated_customer": true, "discount_percent": 5, "delivery_pence": 0 },
+  { "rule_id": "MEMBER-5-FREE", "version": 1, "status": "active", "product_sku": "BC2-BLK", "authenticated_customer": true, "discount_percent": 5, "delivery_pence": 0 },
+  { "rule_id": "MEMBER-5-FREE", "version": 1, "status": "active", "product_sku": "SP3-BLK", "authenticated_customer": true, "discount_percent": 5, "delivery_pence": 0 },
+  { "rule_id": "MEMBER-5-FREE", "version": 1, "status": "active", "product_sku": "HC1-GRY", "authenticated_customer": true, "discount_percent": 5, "delivery_pence": 0 }
 ]

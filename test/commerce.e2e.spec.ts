@@ -13,9 +13,9 @@ test("ordinary storefront completes the reversible journey without WebMCP", asyn
   await expect(page).toHaveURL(/\/products\/AX7-BLK/);
   await page.waitForLoadState("load");
   await page.getByRole("button", { name: "Get my member offer" }).click();
-  await expect(page.locator('[data-region="offer"]')).toContainText("£474.05");
+  await expect(page.locator('[data-region="offer"]')).toContainText("£429.14");
   await page.getByRole("button", { name: "Prepare basket for review" }).click();
-  await expect(page.locator('[data-region="basket"]')).toContainText("£474.05");
+  await expect(page.locator('[data-region="basket"]')).toContainText("£429.14");
   await page.getByRole("button", { name: "Prepare basket for review" }).click();
   await expect(page.locator('[data-region="basket"] .line-item')).toHaveCount(1);
   await page.getByRole("link", { name: "Review basket" }).click();
@@ -99,7 +99,7 @@ test("safe trace excludes inputs, identity, credentials, and quotes; logout clea
   await page.waitForLoadState("load");
   await page.getByRole("button", { name: "Get my member offer" }).click();
   await page.getByRole("button", { name: "Prepare basket for review" }).click();
-  await expect(page.locator('[data-region="basket"]')).toContainText("£474.05");
+  await expect(page.locator('[data-region="basket"]')).toContainText("£429.14");
   const trace = await page.evaluate(() => sessionStorage.getItem("elemkey.trace"));
   expect(trace).toBeTruthy();
   expect(trace).not.toMatch(/sagar|ElemKeyDemo|offer_quote|product_id|eyJ/i);

@@ -81,7 +81,8 @@ test("new targeted winner reaches the right member and deactivation makes the ol
     return { jar, requestToken: token(await product.text()) };
   };
   const standard = await signIn("sagar@example.test", "ElemKeyDemo2026!");
-  assert.equal((await (await fetch(`${origin}/api/offers/evaluate`, { method: "POST", headers: { "content-type": "application/json", cookie: standard.jar }, body: JSON.stringify({ product_id: "product-mh2-slv" }) })).json()).status, "ineligible");
+  const standardOffer = await (await fetch(`${origin}/api/offers/evaluate`, { method: "POST", headers: { "content-type": "application/json", cookie: standard.jar }, body: JSON.stringify({ product_id: "product-mh2-slv" }) })).json();
+  assert.equal(standardOffer.status, "eligible"); assert.equal(standardOffer.data.delivered_total_pence, 31410);
   const vip = await signIn("vip@northmere.test", "ElemKeyVip2026!");
   const offer = await (await fetch(`${origin}/api/offers/evaluate`, { method: "POST", headers: { "content-type": "application/json", cookie: vip.jar }, body: JSON.stringify({ product_id: "product-mh2-slv" }) })).json();
   assert.equal(offer.status, "eligible"); assert.equal(offer.data.delivered_total_pence, 27920);

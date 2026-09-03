@@ -29,12 +29,12 @@ test("sign-in returns to the originating product and member price upgrades its p
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/products\/VN9-SND/);
   await page.getByRole("button", { name: "Get my member offer" }).click();
-  await expect(page.locator('[data-region="offer"]')).toContainText("£265.05");
+  await expect(page.locator('[data-region="offer"]')).toContainText("£245.52");
   await page.getByRole("button", { name: "Prepare basket for review" }).click();
-  await expect(page.locator('[data-region="basket"]')).toContainText("£265.05");
+  await expect(page.locator('[data-region="basket"]')).toContainText("£245.52");
   await page.goto("/basket");
   await expect(page.locator(".basket-line")).toHaveCount(1);
-  await expect(page.locator('[data-region="basket"]')).toContainText("£265.05");
+  await expect(page.locator('[data-region="basket"]')).toContainText("£245.52");
 });
 
 test("WebMCP tools are additive, exact, lifecycle-bound, and page scoped", async ({ page }) => {

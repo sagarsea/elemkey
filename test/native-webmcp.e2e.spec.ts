@@ -15,7 +15,8 @@ test("real Chromium discovers and executes the complete local WebMCP journey", a
   expect(tools.find(({ name }) => name === "get_member_offer")).toMatchObject({ annotations: { readOnlyHint: true, untrustedContentHint: false }, inputSchema: { additionalProperties: false, required: ["product_id"] } });
   expect(tools.find(({ name }) => name === "verify_purchase_terms")).toMatchObject({ annotations: { readOnlyHint: true, untrustedContentHint: false }, inputSchema: { additionalProperties: false, required: ["product_id", "offer_quote", "quantity"] } });
   expect(tools.find(({ name }) => name === "prepare_basket")).toMatchObject({ annotations: { readOnlyHint: false, untrustedContentHint: false }, inputSchema: { additionalProperties: false, required: ["product_id", "offer_quote", "quantity"] } });
-  expect(tools.find(({ name }) => name === "search_products")?.description).toContain("Present the sign-in URL once. Do not imply that a discount is guaranteed. Explain that sign-in is optional, never request or enter credentials, and pause for the shopper to sign in manually.");
+  expect(tools.find(({ name }) => name === "search_products")?.description).toContain("merchant-verified member_offer_preview");
+  expect(tools.find(({ name }) => name === "search_products")?.description).toContain("stable personalized baseline is 5–15%");
 
   const execute = (name: string, input: unknown) => page.evaluate(async ({ name, input }) => {
     type Tool = { name: string };
@@ -26,12 +27,12 @@ test("real Chromium discovers and executes the complete local WebMCP journey", a
     return typeof result === "string" ? JSON.parse(result) : result;
   }, { name, input });
 
-  expect(await execute("search_products", { query: "AX7-BLK" })).toMatchObject({ status: "ok", ui_region: "product", data: { member_offer_prompt: "You may be eligible for a lower member price on the Auralux X7. Sign in to check your personalised offer—it’s optional, and nothing will be added to your basket." } });
+  expect(await execute("search_products", { query: "AX7-BLK" })).toMatchObject({ status: "ok", ui_region: "product", data: { member_offer_prompt: "The Auralux X7 is £513.99 delivered. Signed-in members pay £474.05 or less with free delivery. Sign in to reveal your exact personalised offer—it’s optional, and nothing will be added to your basket." } });
   expect(await execute("search_products", { query: "wireless headphones under £400" })).toMatchObject({ status: "ok", data: {
-    member_offer_prompt: "You may be eligible for a lower member price on the Velora N9. Sign in to check your personalised offer—it’s optional, and nothing will be added to your basket.",
+    member_offer_prompt: "The Velora N9 is £288.99 delivered. Signed-in members pay £265.05 or less with free delivery. Sign in to reveal your exact personalised offer—it’s optional, and nothing will be added to your basket.",
     products: [{ id: "product-vn9-snd" }],
     applied_filters: { category: "headphones", max_delivered_price_pence: 40000, in_stock_only: true, connection: "wireless" },
-    next_action: { type: "human_sign_in", required: false, message: "You may be eligible for a lower member price on the Velora N9. Sign in to check your personalised offer—it’s optional, and nothing will be added to your basket." }
+    next_action: { type: "human_sign_in", required: false, offer_status: "available_after_sign_in", message: "The Velora N9 is £288.99 delivered. Signed-in members pay £265.05 or less with free delivery. Sign in to reveal your exact personalised offer—it’s optional, and nothing will be added to your basket." }
   } });
   const rawHeadphones = await execute("search_products", { query: "headphones" }) as { data: { products: Array<{ category: string }> } };
   expect(rawHeadphones.data.products.every(({ category }) => category === "headphones")).toBe(true);
@@ -55,23 +56,23 @@ test("real Chromium discovers and executes the complete local WebMCP journey", a
 
   const offer = await execute("get_member_offer", { product_id: "product-ax7-blk" }) as { status: string; data: { offer_quote: string; delivered_total_pence: number } };
   expect(offer.status).toBe("eligible");
-  expect(offer.data.delivered_total_pence).toBe(47405);
-  await expect(page.locator('[data-region="offer"]')).toContainText("£474.05");
+  expect(offer.data.delivered_total_pence).toBe(42914);
+  await expect(page.locator('[data-region="offer"]')).toContainText("£429.14");
 
   const terms = await execute("verify_purchase_terms", { product_id: "product-ax7-blk", offer_quote: offer.data.offer_quote, quantity: 1 });
-  expect(terms).toMatchObject({ status: "verified", data: { product: { sku: "AX7-BLK", variant: "Black" }, terms: { delivered_total_pence: 47405 }, privacy: { purchase_created: false } } });
+  expect(terms).toMatchObject({ status: "verified", data: { product: { sku: "AX7-BLK", variant: "Black" }, terms: { delivered_total_pence: 42914 }, privacy: { purchase_created: false } } });
   await expect(page.locator('[data-region="purchase_terms"]')).toContainText("Merchant-verified purchase terms");
   await expect(page.locator('[data-region="purchase_terms"]')).toContainText("No purchase has been created");
 
   const preview = await execute("prepare_basket", { product_id: "product-ax7-blk", offer_quote: offer.data.offer_quote, quantity: 1 });
-  expect(preview).toMatchObject({ status: "preview_ready", data: { line_item: { quantity: 1, delivered_total_pence: 47405 } } });
-  await expect(page.locator('[data-region="basket"]')).toContainText("£474.05");
+  expect(preview).toMatchObject({ status: "preview_ready", data: { line_item: { quantity: 1, delivered_total_pence: 42914 } } });
+  await expect(page.locator('[data-region="basket"]')).toContainText("£429.14");
   expect(await page.locator('[data-region="basket"] .line-item').count()).toBe(1);
 
   await page.goto("/account");
   expect((await page.evaluate(async () => (await (document as Document & { modelContext: { getTools(): Promise<Array<{ name: string }>> } }).modelContext.getTools()).map(({ name }) => name))).sort()).toEqual(["compare_products", "get_member_offer", "get_store_policies", "prepare_basket", "search_products", "view_basket", "view_product"]);
   const accountOffer = await execute("get_member_offer", { product_id: "product-vn9-snd" }) as { data: { offer_quote: string } };
-  await expect(page.locator('[data-offer-product-id="product-vn9-snd"] [data-offer-result]')).toContainText("£265.05");
+  await expect(page.locator('[data-offer-product-id="product-vn9-snd"] [data-offer-result]')).toContainText("£245.52");
   await execute("prepare_basket", { product_id: "product-vn9-snd", offer_quote: accountOffer.data.offer_quote, quantity: 1 });
   await expect(page.locator('[data-offer-product-id="product-vn9-snd"] [data-offer-result]')).toContainText("In basket");
   await expect(page.locator('[data-region="basket"]')).toContainText("Velora N9 Headphones");

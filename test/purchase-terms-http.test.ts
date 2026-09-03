@@ -63,12 +63,12 @@ test("verified purchase terms bind exact merchant facts to the current member qu
       product: { product_id: "product-ax7-blk", title: "Auralux X7 Studio Headphones", sku: "AX7-BLK", variant: "Black", quantity: 1 },
       terms: {
         currency: "GBP", unit_price_pence: 49900, public_delivery_pence: 1499, public_delivered_total_pence: 51399,
-        discount_pence: 2495, member_delivery_pence: 0, delivered_total_pence: 47405, savings_pence: 3994,
+        discount_pence: 6986, member_delivery_pence: 0, delivered_total_pence: 42914, savings_pence: 8485,
         stock_status: "in_stock", stock_quantity: 10, delivery_estimate: "Arrives Tuesday",
         returns: { window_days: 30, summary: "Unused products may be returned within 30 days in their original condition and packaging. This demonstration does not start or track returns." },
         warranty: { status: "provided", summary: "2 years" }
       },
-      benefit: { rule_id: "MEMBER-5-FREE", rule_version: 1, reason: "Signed-in members receive 5% off and free delivery." },
+      benefit: { rule_id: "MEMBER-5-FREE", rule_version: 1, reason: "Your personalised member offer is 14% off with free delivery." },
       verified_at: now.toISOString(), valid_until: "2026-08-30T10:05:00.000Z",
       privacy: { credentials_shared: false, competitor_data_shared: false, purchase_created: false }
     },

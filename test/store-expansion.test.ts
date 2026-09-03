@@ -115,19 +115,19 @@ test("shopper prompts produce compact explainable searches and one delivered-pri
   assert.equal(compared.data?.products.find(({ product_id }) => product_id === "product-mh2-slv")?.battery, "Not applicable");
 });
 
-test("member offers cover the four active SKUs without changing AX7 arithmetic", () => {
+test("member offers cover every catalogue SKU without changing AX7 arithmetic", () => {
   const cfg = config();
-  for (const sku of ["AX7-BLK", "VN9-SND", "FS8-WAL", "NT2-WAL"]) {
+  assert.deepEqual(cfg.rules.map(({ product_sku }) => product_sku).sort(), cfg.products.map(({ sku }) => sku).sort());
+  for (const sku of cfg.productsBySku.keys()) {
     const product = cfg.productsBySku.get(sku)!;
     const rule = cfg.rules.find((candidate) => candidate.product_sku === sku);
-    assert.equal(evaluateOffer(product.id, true, product, rule, instant).status, "eligible");
+    assert.ok(rule);
+    assert.equal(evaluateOffer(product.id, true, product, rule, instant).status, product.stock_quantity ? "eligible" : "out_of_stock");
   }
   const ax7 = evaluateOffer("product-ax7-blk", true, cfg.product, cfg.rule, instant);
   assert.equal(ax7.status, "eligible");
   if (ax7.status === "eligible") assert.equal(ax7.snapshot.delivered_total_pence, 47405);
-  const noRule = cfg.productsBySku.get("MH2-SLV")!;
-  assert.equal(evaluateOffer(noRule.id, true, noRule, undefined, instant).status, "ineligible");
   const unavailable = cfg.productsBySku.get("DE1-WHT")!;
-  assert.equal(evaluateOffer(unavailable.id, false, unavailable, undefined, instant).status, "out_of_stock");
+  assert.equal(evaluateOffer(unavailable.id, false, unavailable, cfg.rules.find(({ product_sku }) => product_sku === unavailable.sku), instant).status, "out_of_stock");
   assert.equal(evaluateOffer("unknown", true, undefined, undefined, instant).status, "invalid_input");
 });

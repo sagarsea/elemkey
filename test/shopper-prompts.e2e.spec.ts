@@ -25,10 +25,11 @@ test("exact shopper prompts select goal-focused tools, explain results, update v
   await page.goto("/shop");
 
   const searchDescription = await page.evaluate(() => (window as unknown as { __tools: Tool[] }).__tools.find(({ name }) => name === "search_products")?.description);
-  expect(searchDescription).toContain("Present the sign-in URL once. Do not imply that a discount is guaranteed. Explain that sign-in is optional, never request or enter credentials, and pause for the shopper to sign in manually.");
+  expect(searchDescription).toContain("merchant-verified member_offer_preview");
+  expect(searchDescription).toContain("stable personalized baseline is 5–15%");
 
   const rawWireless = await execute(page, "search_products", { query: "wireless headphones under £400" });
-  const veloraPrompt = "You may be eligible for a lower member price on the Velora N9. Sign in to check your personalised offer—it’s optional, and nothing will be added to your basket.";
+  const veloraPrompt = "The Velora N9 is £288.99 delivered. Signed-in members pay £265.05 or less with free delivery. Sign in to reveal your exact personalised offer—it’s optional, and nothing will be added to your basket.";
   expect(rawWireless.result).toMatchObject({ status: "ok", data: {
     member_offer_prompt: veloraPrompt,
     applied_filters: { category: "headphones", max_delivered_price_pence: 40000, in_stock_only: true, connection: "wireless" },
@@ -36,6 +37,7 @@ test("exact shopper prompts select goal-focused tools, explain results, update v
       type: "human_sign_in",
       required: false,
       message: veloraPrompt,
+      offer_status: "available_after_sign_in",
       sign_in_url: new URL("/signin?return_to=/products/VN9-SND", page.url()).href
     }
   } });
@@ -54,10 +56,10 @@ test("exact shopper prompts select goal-focused tools, explain results, update v
   expect(wireless).toMatchObject({ selected_tool: "search_products", arguments: wirelessArgs, result: { status: "ok", ui_region: "product" } });
   expect(wireless.result.data.next_action).toMatchObject({
     type: "human_sign_in",
-    eligibility: "unknown_until_sign_in",
+    offer_status: "available_after_sign_in",
     resume: {
       tool: "get_member_offer",
-      input: { product_id: "product-de1-wht" }
+      input: { product_id: "product-vn9-snd" }
     }
   });
   expect(wireless.result.data.products.map(({ id }: { id: string }) => id)).toEqual(["product-de1-wht", "product-vn9-snd"]);
@@ -111,4 +113,18 @@ test("exact shopper prompts select goal-focused tools, explain results, update v
   await page.goto("/checkout-preview");
   await expect(page.getByRole("heading", { name: "This is a non-payment checkout preview." })).toBeVisible();
   await expect(page.locator("main")).toContainText("No order has been created");
+});
+
+test("signed-in search returns the exact personalized offer for its matched product", async ({ page }) => {
+  await installWebMCP(page);
+  await page.goto("/signin?return_to=/account");
+  await page.getByLabel("Email").fill("sagar@example.test");
+  await page.getByLabel("Password").fill("ElemKeyDemo2026!");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __tools: Tool[] }).__tools.some(({ name }) => name === "search_products"))).toBe(true);
+  const search = await execute(page, "search_products", { query: "Velora N9" });
+  expect(search.result).toMatchObject({ status: "ok", data: { products: [{ id: "product-vn9-snd" }], personalized_offer: { product_id: "product-vn9-snd", delivery_pence: 0 } } });
+  expect(search.result.data.personalized_offer.discount_percent).toBeGreaterThanOrEqual(5);
+  expect(search.result.data.personalized_offer.discount_percent).toBeLessThanOrEqual(15);
+  expect(search.result.data.member_offer_prompt).toBeUndefined();
 });

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { afterEach, test } from "node:test";
 import { loadConfig } from "../src/domain";
-import { OfferStore, OfferValidationError, VersionConflictError, offerPhase, selectMemberOffer } from "../src/offer-store";
+import { OfferStore, OfferValidationError, VersionConflictError, offerPhase, personalizedDiscountPercent, selectMemberOffer } from "../src/offer-store";
 
 const secret = (byte: number) => Buffer.alloc(32, byte).toString("base64");
 const config = loadConfig({ SESSION_COOKIE_SECRET: secret(41), OFFER_TOKEN_SECRET: secret(42), MEMBER_BINDING_SECRET: secret(43) });
@@ -24,7 +24,7 @@ afterEach(() => { for (const root of roots.splice(0)) { chmodSync(root, 0o755); 
 test("seeds once, reloads authoritative revisions, detects corruption, and keeps writes atomic", async () => {
   const fixture = store();
   assert.equal(fixture.store.version, 1);
-  assert.deepEqual(fixture.store.current()[0].product_ids, ["product-ax7-blk", "product-vn9-snd", "product-fs8-wal", "product-nt2-wal"]);
+  assert.deepEqual(fixture.store.current()[0].product_ids, config.products.map(({ id }) => id));
   await fixture.store.create(draft(), 1, "owner-northmere-1", instant);
   assert.equal(OfferStore.open(fixture.path, config.productsById, config.membersById, config.rules).version, 2);
 
@@ -63,15 +63,24 @@ test("applies inclusive starts, exclusive ends, every audience, and deterministi
   const standard = config.membersById.get("member-demo-1")!;
   const vip = config.membersById.get("member-demo-vip")!;
   const product = config.productsById.get("product-mh2-slv")!;
-  const scheduled = await fixture.store.create(draft({ name: "VIP window", audience: { type: "tier", tier: "vip" }, starts_at: "2026-08-30T10:00:00.000Z", ends_at: "2026-08-30T11:00:00.000Z" }), 1, "owner-northmere-1", instant);
+  const scheduled = await fixture.store.create(draft({ name: "VIP window", audience: { type: "tier", tier: "vip" }, discount_percent: 20, starts_at: "2026-08-30T10:00:00.000Z", ends_at: "2026-08-30T11:00:00.000Z" }), 1, "owner-northmere-1", instant);
   assert.equal(offerPhase(scheduled, new Date("2026-08-30T09:59:59.999Z")), "scheduled");
-  assert.equal(selectMemberOffer(product, standard, fixture.store.all(), instant), undefined);
+  assert.equal(selectMemberOffer(product, standard, fixture.store.all(), instant)?.rule_id, "MEMBER-5-FREE");
   assert.equal(selectMemberOffer(product, vip, fixture.store.all(), instant)?.rule_id, scheduled.offer_id);
   assert.equal(offerPhase(scheduled, new Date("2026-08-30T11:00:00.000Z")), "expired");
 
-  const individual = await fixture.store.create(draft({ name: "Individual", audience: { type: "member_ids", member_ids: [standard.id] }, discount_percent: 11 }), 2, "owner-northmere-1", instant);
+  const individual = await fixture.store.create(draft({ name: "Individual", audience: { type: "member_ids", member_ids: [standard.id] }, discount_percent: 20 }), 2, "owner-northmere-1", instant);
   assert.equal(selectMemberOffer(product, standard, fixture.store.all(), instant)?.rule_id, individual.offer_id);
-  const tieA = await fixture.store.create(draft({ name: "Tie A", audience: { type: "member_ids", member_ids: [standard.id] }, discount_percent: 15, product_ids: [product.id, "product-cc4-blk"] }), 3, "owner-northmere-1", instant);
-  const tieB = await fixture.store.create(draft({ name: "Tie B", audience: { type: "member_ids", member_ids: [standard.id] }, discount_percent: 15, product_ids: [product.id] }), 4, "owner-northmere-1", instant);
+  const tieA = await fixture.store.create(draft({ name: "Tie A", audience: { type: "member_ids", member_ids: [standard.id] }, discount_percent: 25, product_ids: [product.id, "product-cc4-blk"] }), 3, "owner-northmere-1", instant);
+  const tieB = await fixture.store.create(draft({ name: "Tie B", audience: { type: "member_ids", member_ids: [standard.id] }, discount_percent: 25, product_ids: [product.id] }), 4, "owner-northmere-1", instant);
   assert.equal(selectMemberOffer(product, standard, fixture.store.all(), instant)?.rule_id, [tieA.offer_id, tieB.offer_id].sort()[0]);
+});
+
+test("personalized baseline discounts are stable and stay between five and fifteen percent", () => {
+  const standard = config.membersById.get("member-demo-1")!;
+  const vip = config.membersById.get("member-demo-vip")!;
+  const standardDiscounts = config.products.map((product) => personalizedDiscountPercent(standard.id, product.id));
+  assert.equal(standardDiscounts.every((discount) => discount >= 5 && discount <= 15), true);
+  assert.deepEqual(standardDiscounts, config.products.map((product) => personalizedDiscountPercent(standard.id, product.id)));
+  assert.notDeepEqual(standardDiscounts, config.products.map((product) => personalizedDiscountPercent(vip.id, product.id)));
 });

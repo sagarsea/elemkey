@@ -116,18 +116,25 @@
     commerceState.query = typeof input?.query === "string" ? input.query : "";
     const result = await invoke("search_products", "product", `/api/products/search?${filterQuery(input)}`);
     if (!result) return null;
-    if (result.status === "ok" && document.body.dataset.signedIn !== "true" && result.data.products.length) {
-      const product = result.data.products[0];
-      const offerPrompt = `You may be eligible for a lower member price on the ${product.model}. Sign in to check your personalised offer—it’s optional, and nothing will be added to your basket.`;
-      result.data.member_offer_prompt = offerPrompt;
-      result.data.next_action = {
-        type: "human_sign_in",
-        required: false,
-        message: offerPrompt,
-        eligibility: "unknown_until_sign_in",
-        sign_in_url: new URL(`/signin?return_to=${product.product_url}`, location.origin).href,
-        resume: { tool: "get_member_offer", input: { product_id: product.id } }
-      };
+    if (result.status === "ok" && document.body.dataset.signedIn !== "true") {
+      const product = result.data.products.find(({ member_offer_status }) => member_offer_status === "available_after_sign_in");
+      if (product) {
+        const preview = product.member_offer_preview;
+        const offerPrompt = `The ${product.model} is ${money(product.delivered_total_pence)} delivered. Signed-in members pay ${money(preview.maximum_member_total_pence)} or less with free delivery. Sign in to reveal your exact personalised offer—it’s optional, and nothing will be added to your basket.`;
+        result.data.member_offer_prompt = offerPrompt;
+        result.data.next_action = {
+          type: "human_sign_in",
+          required: false,
+          message: offerPrompt,
+          offer_status: "available_after_sign_in",
+          sign_in_url: new URL(`/signin?return_to=${product.product_url}`, location.origin).href,
+          resume: { tool: "get_member_offer", input: { product_id: product.id } }
+        };
+      }
+    } else if (result.status === "ok") {
+      const product = result.data.products.find(({ member_offer_status }) => member_offer_status === "available_after_sign_in");
+      const offer = product ? await getMemberOffer({ product_id: product.id }) : null;
+      if (offer?.status === "eligible") result.data.personalized_offer = offer.data;
     }
     if (["ok", "empty"].includes(result.status)) document.body.dataset.page === "shop" ? renderProducts(result) : renderHeaderResults(result);
     const message = document.querySelector("[data-search-message]");
@@ -654,7 +661,7 @@
     const productId = { type: "string", enum: ids, description: "Merchant product identifier returned by search_products." };
     const feature = { type: "string", enum: ["commuting", "home_listening", "lightweight", "over_ear", "noise_control"] };
     const tools = [
-      { name: "search_products", description: "Search products from the shopper's raw request with optional precise category, delivered-price, stock, connection and listening-use filters. Recognized raw intent is applied in the same call. Returns compact summaries with match reasons. Relay member_offer_prompt to signed-out shoppers when present. When next_action.type is human_sign_in, use next_action.message. Present the sign-in URL once. Do not imply that a discount is guaranteed. Explain that sign-in is optional, never request or enter credentials, and pause for the shopper to sign in manually.", inputSchema: schema({ query: { type: "string", minLength: 1, maxLength: 100 }, category: { type: "string", enum: ["headphones", "speakers", "sources", "accessories"] }, max_delivered_price_pence: { type: "integer", minimum: 0 }, in_stock_only: { type: "boolean" }, connection: { type: "string", enum: ["wired", "wireless"] }, features: { type: "array", minItems: 1, maxItems: 5, uniqueItems: true, items: feature }, sort: { type: "string", enum: ["relevance", "delivered_price_asc", "delivered_price_desc", "weight_asc"] }, limit: { type: "integer", minimum: 1, maximum: 8 } }, ["query"]), annotations: readOnly, execute: searchProducts },
+      { name: "search_products", description: "Search products from the shopper's raw request with optional precise category, delivered-price, stock, connection and listening-use filters. Recognized raw intent is applied in the same call. Returns compact summaries with match reasons and a merchant-verified member_offer_preview. For signed-out shoppers, relay next_action.message, present the sign-in URL once, explain that sign-in is optional, never request or enter credentials, and pause for manual sign-in. For signed-in shoppers, personalized_offer contains the exact member discount; the stable personalized baseline is 5–15%, and an owner-targeted offer may be better. Never imply that search changes the basket.", inputSchema: schema({ query: { type: "string", minLength: 1, maxLength: 100 }, category: { type: "string", enum: ["headphones", "speakers", "sources", "accessories"] }, max_delivered_price_pence: { type: "integer", minimum: 0 }, in_stock_only: { type: "boolean" }, connection: { type: "string", enum: ["wired", "wireless"] }, features: { type: "array", minItems: 1, maxItems: 5, uniqueItems: true, items: feature }, sort: { type: "string", enum: ["relevance", "delivered_price_asc", "delivered_price_desc", "weight_asc"] }, limit: { type: "integer", minimum: 1, maximum: 8 } }, ["query"]), annotations: readOnly, execute: searchProducts },
       { name: "compare_products", description: "Compare two to four products by delivered price, stock, connection, weight, battery, noise control, warranty and member-offer status. Results are ordered by delivered price.", inputSchema: schema({ product_ids: { type: "array", minItems: 2, maxItems: 4, uniqueItems: true, items: productId } }, ["product_ids"]), annotations: readOnly, execute: compareProducts },
       { name: "view_product", description: "Open a product page from a merchant product identifier.", inputSchema: schema({ product_id: productId }, ["product_id"]), annotations: readOnly, execute: viewProduct },
       { name: "get_store_policies", description: "Read a Northmere delivery, returns, or member-offer policy.", inputSchema: schema({ topic: { type: "string", enum: ["delivery", "returns", "member_offers"] } }, ["topic"]), annotations: readOnly, execute: getStorePolicies },

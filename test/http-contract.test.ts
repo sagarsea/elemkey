@@ -105,7 +105,7 @@ test("signed-out and signed-in offer envelopes feed a deterministic protected ba
   const eligible = await fetch(`${origin}/api/offers/evaluate`, { method: "POST", headers: { "content-type": "application/json", cookie: jar }, body: JSON.stringify({ product_id: "product-ax7-blk" }) });
   const offer = await eligible.json();
   assert.equal(offer.status, "eligible");
-  assert.equal(offer.data.delivered_total_pence, 47405);
+  assert.equal(offer.data.delivered_total_pence, 42914);
   assert.equal(offer.data.expires_at, "2026-08-30T10:05:00.000Z");
 
   const rejected = await fetch(`${origin}/api/basket/preview`, { method: "POST", headers: { "content-type": "application/json", cookie: jar, origin }, body: JSON.stringify({ product_id: "product-ax7-blk", offer_quote: offer.data.offer_quote, quantity: 2 }) });
@@ -122,7 +122,7 @@ test("signed-out and signed-in offer envelopes feed a deterministic protected ba
     assert.equal(response.status, 200);
     const preview = await response.json();
     assert.equal(preview.status, "preview_ready");
-    assert.equal(preview.data.line_item.delivered_total_pence, 47405);
+    assert.equal(preview.data.line_item.delivered_total_pence, 42914);
     assert.equal(preview.data.checkout_preview_url, "/checkout-preview");
   }
 });

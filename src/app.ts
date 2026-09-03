@@ -12,7 +12,7 @@ export type AppOptions = { now?: () => Date; secureCookie?: boolean; failOperati
 const policies = Object.freeze({
   delivery: { title: "Delivery", body: "In-stock products show their current estimate and delivery price. Member delivery is free only when an eligible offer says so." },
   returns: { title: "Returns", body: "Unused products may be returned within 30 days in their original condition and packaging. This demonstration does not start or track returns." },
-  member_offers: { title: "Member offers", body: "Selected signed-in members receive 5% off and free delivery on selected products. Offers expire after five minutes and are checked again before basket display." }
+  member_offers: { title: "Member offers", body: "Signed-in members receive at least 5% off and free delivery on every catalogue product. Offers expire after five minutes and are checked again before basket display." }
 });
 type PolicyTopic = keyof typeof policies;
 const policyTopic = (value: unknown): value is PolicyTopic => typeof value === "string" && value in policies;
@@ -90,7 +90,18 @@ export function createApp(config: AppConfig, options: AppOptions = {}) {
     if ("features" in req.query) input.features = Array.isArray(req.query.features) ? req.query.features : [req.query.features];
     if ("sort" in req.query) input.sort = req.query.sort;
     if ("limit" in req.query) input.limit = typeof req.query.limit === "string" && /^\d+$/.test(req.query.limit) ? Number(req.query.limit) : req.query.limit;
-    const result = searchProducts(input, config.products, now());
+    const searchedAt = now();
+    const result = searchProducts(input, config.products, searchedAt);
+    if (result.status === "ok") result.data.products = result.data.products.map((product) => {
+      const catalogueProduct = config.productsById.get(product.id)!;
+      const baseline = offerStore.current().find((offer) => offer.offer_id === "MEMBER-5-FREE" && offer.audience.type === "all" && offerPhase(offer, searchedAt) === "current" && offer.product_ids.includes(product.id));
+      const available = product.stock_status === "in_stock" && baseline;
+      return {
+        ...product,
+        member_offer_status: available ? "available_after_sign_in" as const : "not_guaranteed" as const,
+        ...(available ? { member_offer_preview: { status: "guaranteed_after_sign_in" as const, baseline_discount_percent: baseline.discount_percent, personalized_discount_range_percent: { minimum: baseline.discount_percent, maximum: Math.max(15, baseline.discount_percent) }, maximum_member_total_pence: deliveredTotal(catalogueProduct, baseline), delivery_pence: baseline.delivery_pence ?? catalogueProduct.delivery_pence, owner_targeted_offer_may_be_better: true } } : {})
+      };
+    });
     res.status(result.status === "invalid_input" ? 400 : 200).json(result);
   });
 

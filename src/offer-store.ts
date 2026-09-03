@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { Member, MemberTier, OfferRule, OfferSnapshot, Product } from "./domain";
 
 export type OfferStatus = "active" | "inactive" | "archived";
@@ -95,6 +95,9 @@ export function normalizeOfferDraft(value: unknown, products: ReadonlyMap<string
 
 export const deliveredTotal = (product: Product, offer: Pick<OfferDraft, "discount_percent" | "delivery_pence">) =>
   product.unit_price_pence - Math.round(product.unit_price_pence * offer.discount_percent / 100) + (offer.delivery_pence ?? product.delivery_pence);
+
+export const personalizedDiscountPercent = (memberId: string, productId: string) =>
+  5 + createHash("sha256").update(`${memberId}:${productId}`).digest()[0] % 11;
 
 const currentRevisions = (revisions: readonly OfferRevision[]) => [...new Map(revisions.map((revision) => [revision.offer_id, revision])).values()];
 
@@ -219,16 +222,17 @@ export function selectMemberOffer(product: Product, member: Member, revisions: r
     (offer.audience.type === "tier" && offer.audience.tier === member.tier) ||
     (offer.audience.type === "member_ids" && offer.audience.member_ids.includes(member.id))
   )).map((offer) => {
-    const discount_pence = Math.round(product.unit_price_pence * offer.discount_percent / 100);
+    const discount_percent = offer.offer_id === "MEMBER-5-FREE" ? Math.max(offer.discount_percent, personalizedDiscountPercent(member.id, product.id)) : offer.discount_percent;
+    const discount_pence = Math.round(product.unit_price_pence * discount_percent / 100);
     const delivery_pence = offer.delivery_pence ?? product.delivery_pence;
-    return { offer, discount_pence, delivery_pence, delivered_total_pence: product.unit_price_pence - discount_pence + delivery_pence };
+    return { offer, discount_percent, discount_pence, delivery_pence, delivered_total_pence: product.unit_price_pence - discount_pence + delivery_pence };
   }).sort((left, right) => left.delivered_total_pence - right.delivered_total_pence || right.offer.discount_percent - left.offer.discount_percent || left.delivery_pence - right.delivery_pence || left.offer.offer_id.localeCompare(right.offer.offer_id));
   const winner = eligible[0];
   if (!winner) return undefined;
   return Object.freeze({
     product_id: product.id, sku: product.sku, rule_id: winner.offer.offer_id, rule_version: winner.offer.version, currency: product.currency,
-    unit_price_pence: product.unit_price_pence, stock_quantity: product.stock_quantity, discount_percent: winner.offer.discount_percent,
+    unit_price_pence: product.unit_price_pence, stock_quantity: product.stock_quantity, discount_percent: winner.discount_percent,
     discount_pence: winner.discount_pence, delivery_pence: winner.delivery_pence, delivered_total_pence: winner.delivered_total_pence,
-    reason: winner.offer.offer_id === "MEMBER-5-FREE" ? "Signed-in members receive 5% off and free delivery." : `${winner.offer.name} is your best current member offer.`
+    reason: winner.offer.offer_id === "MEMBER-5-FREE" ? `Your personalised member offer is ${winner.discount_percent}% off with free delivery.` : `${winner.offer.name} is your best current member offer.`
   });
 }
