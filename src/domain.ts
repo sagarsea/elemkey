@@ -141,7 +141,7 @@ function matchReason(product: Product, input: Record<string, unknown>, queryScor
 }
 
 const productSummary = (product: Product, reason: string) => Object.freeze({
-  id: product.id, title: product.title, sku: product.sku, category: product.category,
+  id: product.id, title: product.title, model: product.model, sku: product.sku, category: product.category,
   unit_price_pence: product.unit_price_pence, delivery_pence: product.delivery_pence,
   delivered_total_pence: product.unit_price_pence + product.delivery_pence,
   stock_status: product.stock_quantity > 0 ? "in_stock" as const : "out_of_stock" as const,

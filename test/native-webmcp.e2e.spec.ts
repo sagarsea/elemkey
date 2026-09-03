@@ -5,7 +5,7 @@ test("real Chromium discovers and executes the complete local WebMCP journey", a
 
   await page.goto("/products/AX7-BLK");
   const tools = await page.evaluate(async () => {
-    const context = (document as Document & { modelContext?: { getTools(): Promise<Array<{ name: string; inputSchema: unknown; annotations: unknown }>> } }).modelContext;
+    const context = (document as Document & { modelContext?: { getTools(): Promise<Array<{ name: string; description: string; inputSchema: unknown; annotations: unknown }>> } }).modelContext;
     if (!context) return [];
     return (await context.getTools()).map((tool) => ({ ...tool, inputSchema: typeof tool.inputSchema === "string" ? JSON.parse(tool.inputSchema) : tool.inputSchema }));
   });
@@ -15,6 +15,7 @@ test("real Chromium discovers and executes the complete local WebMCP journey", a
   expect(tools.find(({ name }) => name === "get_member_offer")).toMatchObject({ annotations: { readOnlyHint: true, untrustedContentHint: false }, inputSchema: { additionalProperties: false, required: ["product_id"] } });
   expect(tools.find(({ name }) => name === "verify_purchase_terms")).toMatchObject({ annotations: { readOnlyHint: true, untrustedContentHint: false }, inputSchema: { additionalProperties: false, required: ["product_id", "offer_quote", "quantity"] } });
   expect(tools.find(({ name }) => name === "prepare_basket")).toMatchObject({ annotations: { readOnlyHint: false, untrustedContentHint: false }, inputSchema: { additionalProperties: false, required: ["product_id", "offer_quote", "quantity"] } });
+  expect(tools.find(({ name }) => name === "search_products")?.description).toContain("Present the sign-in URL once. Do not imply that a discount is guaranteed. Explain that sign-in is optional, never request or enter credentials, and pause for the shopper to sign in manually.");
 
   const execute = (name: string, input: unknown) => page.evaluate(async ({ name, input }) => {
     type Tool = { name: string };
@@ -25,8 +26,13 @@ test("real Chromium discovers and executes the complete local WebMCP journey", a
     return typeof result === "string" ? JSON.parse(result) : result;
   }, { name, input });
 
-  expect(await execute("search_products", { query: "AX7-BLK" })).toMatchObject({ status: "ok", ui_region: "product", data: { member_offer_prompt: "You may qualify for a special offer. Sign in to reveal your personal offer." } });
-  expect(await execute("search_products", { query: "wireless headphones under £400" })).toMatchObject({ status: "ok", data: { products: [{ id: "product-vn9-snd" }], applied_filters: { category: "headphones", max_delivered_price_pence: 40000, in_stock_only: true, connection: "wireless" } } });
+  expect(await execute("search_products", { query: "AX7-BLK" })).toMatchObject({ status: "ok", ui_region: "product", data: { member_offer_prompt: "You may be eligible for a lower member price on the Auralux X7. Sign in to check your personalised offer—it’s optional, and nothing will be added to your basket." } });
+  expect(await execute("search_products", { query: "wireless headphones under £400" })).toMatchObject({ status: "ok", data: {
+    member_offer_prompt: "You may be eligible for a lower member price on the Velora N9. Sign in to check your personalised offer—it’s optional, and nothing will be added to your basket.",
+    products: [{ id: "product-vn9-snd" }],
+    applied_filters: { category: "headphones", max_delivered_price_pence: 40000, in_stock_only: true, connection: "wireless" },
+    next_action: { type: "human_sign_in", required: false, message: "You may be eligible for a lower member price on the Velora N9. Sign in to check your personalised offer—it’s optional, and nothing will be added to your basket." }
+  } });
   const rawHeadphones = await execute("search_products", { query: "headphones" }) as { data: { products: Array<{ category: string }> } };
   expect(rawHeadphones.data.products.every(({ category }) => category === "headphones")).toBe(true);
   expect(await execute("search_products", { query: "wireless headphones under £100" })).toMatchObject({ status: "empty", data: { suggested_filters: { category: "headphones", max_delivered_price_pence: 28899, in_stock_only: true, connection: "wireless" } } });

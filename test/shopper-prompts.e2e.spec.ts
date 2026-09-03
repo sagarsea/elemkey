@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-type Tool = { name: string; inputSchema: Record<string, unknown>; annotations: Record<string, unknown>; execute(input: unknown): Promise<unknown> };
+type Tool = { name: string; description: string; inputSchema: Record<string, unknown>; annotations: Record<string, unknown>; execute(input: unknown): Promise<unknown> };
 type Result = { status: string; data: Record<string, any>; ui_region: string };
 
 async function installWebMCP(page: Page) {
@@ -24,9 +24,23 @@ test("exact shopper prompts select goal-focused tools, explain results, update v
   await installWebMCP(page);
   await page.goto("/shop");
 
+  const searchDescription = await page.evaluate(() => (window as unknown as { __tools: Tool[] }).__tools.find(({ name }) => name === "search_products")?.description);
+  expect(searchDescription).toContain("Present the sign-in URL once. Do not imply that a discount is guaranteed. Explain that sign-in is optional, never request or enter credentials, and pause for the shopper to sign in manually.");
+
   const rawWireless = await execute(page, "search_products", { query: "wireless headphones under £400" });
-  expect(rawWireless.result).toMatchObject({ status: "ok", data: { applied_filters: { category: "headphones", max_delivered_price_pence: 40000, in_stock_only: true, connection: "wireless" } } });
+  const veloraPrompt = "You may be eligible for a lower member price on the Velora N9. Sign in to check your personalised offer—it’s optional, and nothing will be added to your basket.";
+  expect(rawWireless.result).toMatchObject({ status: "ok", data: {
+    member_offer_prompt: veloraPrompt,
+    applied_filters: { category: "headphones", max_delivered_price_pence: 40000, in_stock_only: true, connection: "wireless" },
+    next_action: {
+      type: "human_sign_in",
+      required: false,
+      message: veloraPrompt,
+      sign_in_url: new URL("/signin?return_to=/products/VN9-SND", page.url()).href
+    }
+  } });
   expect(rawWireless.result.data.products.map(({ id }: { id: string }) => id)).toEqual(["product-vn9-snd"]);
+  expect(await page.evaluate(() => JSON.parse(sessionStorage.getItem("elemkey.basket") || "[]"))).toEqual([]);
 
   const rawCommuting = await execute(page, "search_products", { query: "commuting" });
   expect(rawCommuting.result.data.products.map(({ id }: { id: string }) => id)).toEqual(["product-vn9-snd", "product-ax7-blk"]);
