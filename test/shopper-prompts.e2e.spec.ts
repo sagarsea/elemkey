@@ -38,7 +38,14 @@ test("exact shopper prompts select goal-focused tools, explain results, update v
   const wirelessArgs = { query: "Show me wireless headphones under £400.", category: "headphones", max_delivered_price_pence: 40000, connection: "wireless", sort: "delivered_price_asc" };
   const wireless = await execute(page, "search_products", wirelessArgs);
   expect(wireless).toMatchObject({ selected_tool: "search_products", arguments: wirelessArgs, result: { status: "ok", ui_region: "product" } });
-  expect(wireless.result.data.member_offer_prompt).toBe("You may qualify for a special offer. Sign in to reveal your personal offer.");
+  expect(wireless.result.data.next_action).toMatchObject({
+    type: "human_sign_in",
+    eligibility: "unknown_until_sign_in",
+    resume: {
+      tool: "get_member_offer",
+      input: { product_id: "product-de1-wht" }
+    }
+  });
   expect(wireless.result.data.products.map(({ id }: { id: string }) => id)).toEqual(["product-de1-wht", "product-vn9-snd"]);
   expect(wireless.result.data.products[1].match_reason).toMatch(/Bluetooth|wireless/i);
   await expect(page.locator("[data-product-grid] .catalogue-card")).toHaveCount(2);
