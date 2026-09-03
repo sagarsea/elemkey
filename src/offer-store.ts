@@ -100,6 +100,15 @@ export const personalizedDiscountPercent = (memberId: string, productId: string)
   5 + createHash("sha256").update(`${memberId}:${productId}`).digest()[0] % 11;
 
 const currentRevisions = (revisions: readonly OfferRevision[]) => [...new Map(revisions.map((revision) => [revision.offer_id, revision])).values()];
+const migrateLegacyMemberIds = (raw: string) => raw
+  .replaceAll('"member-demo-1"', '"member-standard-1"')
+  .replaceAll('"member-demo-vip"', '"member-vip-1"');
+const writeSnapshotSync = (path: string, snapshot: OfferSnapshotFile) => {
+  mkdirSync(dirname(path), { recursive: true });
+  const temporary = `${path}.${process.pid}.tmp`;
+  writeFileSync(temporary, JSON.stringify(snapshot, null, 2) + "\n", { flag: "wx" });
+  renameSync(temporary, path);
+};
 
 function validateSnapshot(value: unknown, products: ReadonlyMap<string, Product>, members: ReadonlyMap<string, Member>): OfferSnapshotFile {
   const snapshot = record(value);
@@ -135,7 +144,10 @@ export class OfferStore {
     const fullPath = resolve(path);
     let snapshot: OfferSnapshotFile;
     try {
-      snapshot = validateSnapshot(JSON.parse(readFileSync(fullPath, "utf8")), products, members);
+      const raw = readFileSync(fullPath, "utf8");
+      const migrated = migrateLegacyMemberIds(raw);
+      snapshot = validateSnapshot(JSON.parse(migrated), products, members);
+      if (migrated !== raw) writeSnapshotSync(fullPath, snapshot);
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
       const timestamp = now.toISOString();
@@ -144,10 +156,7 @@ export class OfferStore {
       if (!first || product_ids.length !== rules.length) throw new Error("Invalid ElemKey offer seed");
       const seed = normalizeOfferDraft({ name: "Member 5% and free delivery", product_ids, audience: { type: "all" }, discount_percent: first.discount_percent, delivery_pence: first.delivery_pence, status: first.status, starts_at: null, ends_at: null }, products, members);
       snapshot = Object.freeze({ schema_version: 1, version: 1, revisions: Object.freeze([Object.freeze({ ...seed, offer_id: first.rule_id, version: 1, created_at: timestamp, updated_at: timestamp, created_by: "system" })]) });
-      mkdirSync(dirname(fullPath), { recursive: true });
-      const temporary = `${fullPath}.${process.pid}.tmp`;
-      writeFileSync(temporary, JSON.stringify(snapshot, null, 2) + "\n", { flag: "wx" });
-      renameSync(temporary, fullPath);
+      writeSnapshotSync(fullPath, snapshot);
     }
     return new OfferStore(fullPath, products, members, snapshot);
   }

@@ -7,7 +7,7 @@ const captureTools = (page: Page) => page.addInitScript(() => {
 });
 async function ownerSignIn(page: Page) {
   await page.goto("/admin/signin");
-  await page.getByLabel("Owner email").fill("owner@northmere.test");
+  await page.getByLabel("Owner email").fill("owner@northmere.audio");
   await page.getByLabel("Owner password").fill("NorthmereOwner2026!");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/admin\/offers/);
@@ -18,7 +18,7 @@ test("owner sign-in exposes no tools and the owner workspace exposes exactly fiv
   await captureTools(page);
   await page.goto("/admin/signin");
   expect(await page.evaluate(() => (window as unknown as { __registrations: unknown[] }).__registrations.length)).toBe(0);
-  await page.getByLabel("Owner email").fill("owner@northmere.test");
+  await page.getByLabel("Owner email").fill("owner@northmere.audio");
   await page.getByLabel("Owner password").fill("NorthmereOwner2026!");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/admin\/offers/);

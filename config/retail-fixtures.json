@@ -18,7 +18,7 @@
     { "id": "product-hc1-gry", "title": "Transit Hard Case", "model": "Transit Hard Case", "sku": "HC1-GRY", "category": "accessories", "variant": "Grey", "description": "A protective moulded case for full-size headphones.", "currency": "GBP", "unit_price_pence": 8900, "stock_quantity": 20, "delivery_pence": 499, "delivery_estimate": "Arrives Tuesday", "public_offers": [], "product_url": "/products/HC1-GRY", "image_url": "/images/hc1-gry.svg", "image_alt": "Grey Transit hard headphone case", "specifications": { "Shell": "Moulded EVA", "Closure": "Zip", "Interior": "Soft lined", "Warranty": "1 year" } }
   ],
   "members": [
-    { "id": "member-demo-1", "email": "sagar@example.test", "tier": "standard", "password_salt": "8f934a79cb9ea9f17a19fc195d4ac2db", "password_hash": "5ae2b9e974863b6a3e48ced767faecf61421f08b30f1779a26077c40626c8d6a165d0c855bed4345c2f8e1289773477a979987274bec5c5a98227eb1eac395bc" },
-    { "id": "member-demo-vip", "email": "vip@northmere.test", "tier": "vip", "password_salt": "6b72e5cb0d5c4d3e5703b9509377d55c", "password_hash": "a279c805536f5206734e2af94d5ff93d81f54abdc5402fad9966090e818f4650fcb95e26b1fd199fa3ddfecee2e4effd456d1f2d2c08476d594b6a8e33aab537" }
+    { "id": "member-standard-1", "email": "member@northmere.audio", "tier": "standard", "password_salt": "8f934a79cb9ea9f17a19fc195d4ac2db", "password_hash": "82f3e4e61c975e4064741566cd3e0aca659e667daf6060646ac5d194c336670debe9a41b39cdf30a04bb9b62a930b2be528e9137f62526225f3f0705a355ad2a" },
+    { "id": "member-vip-1", "email": "vip@northmere.audio", "tier": "vip", "password_salt": "6b72e5cb0d5c4d3e5703b9509377d55c", "password_hash": "1a2b28fd66132d892bc7771e43a2b3d660b681861ac91b09753ecf299e41445c05d2447c8beb16455d8409f8dc13b3964d49155718dc80c01edd1fccd57e5902" }
   ]
 }

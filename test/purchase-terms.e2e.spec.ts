@@ -7,8 +7,8 @@ test("WebMCP verifies a visible decision receipt without purchasing or sharing c
     Object.defineProperty(window, "__registrations", { value: registrations });
   });
   await page.goto("/signin?return_to=/products/AX7-BLK");
-  await page.getByLabel("Email").fill("sagar@example.test");
-  await page.getByLabel("Password").fill("ElemKeyDemo2026!");
+  await page.getByLabel("Email").fill("member@northmere.audio");
+  await page.getByLabel("Password").fill("NorthmereMember2026!");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect.poll(() => page.evaluate(() => (window as unknown as { __registrations: Array<{ name: string }> }).__registrations.some(({ name }) => name === "verify_purchase_terms"))).toBe(true);
 
@@ -20,12 +20,12 @@ test("WebMCP verifies a visible decision receipt without purchasing or sharing c
     const offer = await registrations.find(({ name }) => name === "get_member_offer")!.execute({ product_id: "product-ax7-blk" });
     return registrations.find(({ name }) => name === "verify_purchase_terms")!.execute({ product_id: "product-ax7-blk", offer_quote: offer.data.offer_quote, quantity: 1 });
   });
-  expect(result).toMatchObject({ status: "verified", data: { product: { sku: "AX7-BLK", variant: "Black" }, terms: { delivered_total_pence: 42914, delivery_estimate: "Arrives Tuesday" }, privacy: { credentials_shared: false, competitor_data_shared: false, purchase_created: false } } });
+  expect(result).toMatchObject({ status: "verified", data: { product: { sku: "AX7-BLK", variant: "Black" }, terms: { delivered_total_pence: 43413, delivery_estimate: "Arrives Tuesday" }, privacy: { credentials_shared: false, competitor_data_shared: false, purchase_created: false } } });
   const receipt = page.locator('[data-region="purchase_terms"]');
   await expect(receipt).toContainText("Merchant-verified purchase terms");
   await expect(receipt).toContainText("AX7-BLK");
   await expect(receipt).toContainText("Black");
-  await expect(receipt).toContainText(/429\.14/);
+  await expect(receipt).toContainText(/434\.13/);
   await expect(receipt).toContainText("Arrives Tuesday");
   await expect(receipt).toContainText("30-day returns");
   await expect(receipt).toContainText("No purchase has been created");

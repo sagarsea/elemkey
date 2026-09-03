@@ -22,7 +22,7 @@ test("loads the locked catalogue, member hash, and active rule", () => {
   });
   assert.equal(config.product.sku, "AX7-BLK");
   assert.equal(config.product.unit_price_pence, 49900);
-  assert.equal(config.member.email, "sagar@example.test");
+  assert.equal(config.member.email, "member@northmere.audio");
   assert.equal("password" in config.member, false);
   assert.match(config.member.password_hash, /^[0-9a-f]{128}$/);
   assert.deepEqual(config.rule, {
@@ -100,9 +100,9 @@ test("offer evaluation uses one exact integer-pence calculation", () => {
 
 test("credentials, safe returns, and encrypted-session fields stay minimal", async () => {
   const cfg = config();
-  assert.equal(await authenticate("sagar@example.test", "ElemKeyDemo2026!", cfg.member), true);
-  assert.equal(await authenticate("sagar@example.test", "wrong", cfg.member), false);
-  assert.equal(await authenticate("missing@example.test", "ElemKeyDemo2026!", cfg.member), false);
+  assert.equal(await authenticate("member@northmere.audio", "NorthmereMember2026!", cfg.member), true);
+  assert.equal(await authenticate("member@northmere.audio", "wrong", cfg.member), false);
+  assert.equal(await authenticate("missing@northmere.audio", "NorthmereMember2026!", cfg.member), false);
   assert.equal(safeReturnTo("/products/AX7-BLK"), "/products/AX7-BLK");
   for (const value of ["https://evil.test", "//evil.test", "/signin", "not-a-path", undefined]) {
     assert.equal(safeReturnTo(value), "/products/AX7-BLK");
@@ -114,7 +114,7 @@ test("credentials, safe returns, and encrypted-session fields stay minimal", asy
 });
 
 test("session timeout accepts exact boundaries and expires immediately after", () => {
-  const session = createMemberSession("member-demo-1", instant);
+  const session = createMemberSession("member-standard-1", instant);
   const at = (milliseconds: number) => new Date(instant.getTime() + milliseconds);
   assert.equal(validateSession(session, at(30 * 60_000)).active, true);
   assert.equal(validateSession(session, at(30 * 60_000 + 1)).reason, "session_expired");

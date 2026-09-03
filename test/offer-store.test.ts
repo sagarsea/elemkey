@@ -40,6 +40,15 @@ test("seeds once, reloads authoritative revisions, detects corruption, and keeps
   assert.equal(readFileSync(fixture.path, "utf8"), "{broken");
 });
 
+test("migrates legacy member audience identifiers before validation", async () => {
+  const fixture = store();
+  await fixture.store.create(draft({ audience: { type: "member_ids", member_ids: ["member-vip-1"] } }), 1, "owner-northmere-1", instant);
+  writeFileSync(fixture.path, readFileSync(fixture.path, "utf8").replaceAll("member-vip-1", "member-demo-vip"));
+  const reopened = OfferStore.open(fixture.path, config.productsById, config.membersById, config.rules);
+  assert.deepEqual(reopened.current()[1].audience, { type: "member_ids", member_ids: ["member-vip-1"] });
+  assert.doesNotMatch(readFileSync(fixture.path, "utf8"), /member-demo/);
+});
+
 test("validates complete drafts and preserves immutable revision history with optimistic writes", async () => {
   const fixture = store();
   for (const invalid of [
@@ -60,8 +69,8 @@ test("validates complete drafts and preserves immutable revision history with op
 
 test("applies inclusive starts, exclusive ends, every audience, and deterministic best-total ties", async () => {
   const fixture = store();
-  const standard = config.membersById.get("member-demo-1")!;
-  const vip = config.membersById.get("member-demo-vip")!;
+  const standard = config.membersById.get("member-standard-1")!;
+  const vip = config.membersById.get("member-vip-1")!;
   const product = config.productsById.get("product-mh2-slv")!;
   const scheduled = await fixture.store.create(draft({ name: "VIP window", audience: { type: "tier", tier: "vip" }, discount_percent: 20, starts_at: "2026-08-30T10:00:00.000Z", ends_at: "2026-08-30T11:00:00.000Z" }), 1, "owner-northmere-1", instant);
   assert.equal(offerPhase(scheduled, new Date("2026-08-30T09:59:59.999Z")), "scheduled");
@@ -77,8 +86,8 @@ test("applies inclusive starts, exclusive ends, every audience, and deterministi
 });
 
 test("personalized baseline discounts are stable and stay between five and fifteen percent", () => {
-  const standard = config.membersById.get("member-demo-1")!;
-  const vip = config.membersById.get("member-demo-vip")!;
+  const standard = config.membersById.get("member-standard-1")!;
+  const vip = config.membersById.get("member-vip-1")!;
   const standardDiscounts = config.products.map((product) => personalizedDiscountPercent(standard.id, product.id));
   assert.equal(standardDiscounts.every((discount) => discount >= 5 && discount <= 15), true);
   assert.deepEqual(standardDiscounts, config.products.map((product) => personalizedDiscountPercent(standard.id, product.id)));

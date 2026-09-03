@@ -1,6 +1,8 @@
 (() => {
   "use strict";
 
+  const merchant = Object.freeze({ name: "Northmere Audio", location: "Woking, Surrey", established_year: 2016 });
+  const brandDescription = "Independent audio brand based in Woking, Surrey since 2016";
   const storage = { quote: "elemkey.offerQuote", preview: "elemkey.basketPreview", basket: "elemkey.basket", trace: "elemkey.trace" };
   const parse = (value, fallback) => { try { return JSON.parse(value || "") ?? fallback; } catch { return fallback; } };
   const storedLines = parse(sessionStorage.getItem(storage.basket), []).filter((line) => line && typeof line.product_id === "string" && line.quantity === 1 && (line.offer_quote === undefined || typeof line.offer_quote === "string"));
@@ -19,7 +21,7 @@
     if (className) element.className = className;
     return element;
   };
-  const envelope = (status, data, ui_region) => ({ status, observed_at: new Date().toISOString(), data, error: null, ui_region });
+  const envelope = (status, data, ui_region) => ({ status, observed_at: new Date().toISOString(), data, error: null, ui_region, merchant });
   const persistBasket = () => {
     sessionStorage.setItem(storage.basket, JSON.stringify(commerceState.basketLines));
     if (commerceState.basketLines.length) sessionStorage.setItem(storage.preview, JSON.stringify(commerceState.basketLines[0]));
@@ -50,14 +52,14 @@
     const started = performance.now();
     try {
       const response = await fetch(url, { credentials: "same-origin", ...init });
-      const result = await response.json();
+      const result = { ...await response.json(), merchant };
       if (sequence !== commerceState.latest[sequenceKey]) return null;
       trace(callName, typeof result.status === "string" ? result.status : "unknown_response", started, uiRegion);
       return result;
     } catch {
       if (sequence !== commerceState.latest[sequenceKey]) return null;
       trace(callName, "service_unavailable", started, uiRegion);
-      return { status: "service_unavailable", observed_at: new Date().toISOString(), data: null, error: { code: "NETWORK_UNAVAILABLE", message: "The request could not be completed.", retryable: true }, ui_region: uiRegion };
+      return { status: "service_unavailable", observed_at: new Date().toISOString(), data: null, error: { code: "NETWORK_UNAVAILABLE", message: "The request could not be completed.", retryable: true }, ui_region: uiRegion, merchant };
     }
   };
   const feedback = (text) => { const target = region("tool-feedback"); if (target) target.textContent = text; };
@@ -649,7 +651,7 @@
       { name: "revise_member_offer", description: "Append a revision from an owner-session-bound preview.", inputSchema: schema({ offer_id: offerId, preview_token: { type: "string", minLength: 20, maxLength: 16384 } }, ["offer_id", "preview_token"]), annotations: mutating, execute: reviseMemberOffer },
       { name: "set_member_offer_status", description: "Activate, deactivate, or permanently archive an offer.", inputSchema: schema({ offer_id: offerId, status: { type: "string", enum: ["active", "inactive", "archived"] }, expected_version: { type: "integer", minimum: 0 } }, ["offer_id", "status", "expected_version"]), annotations: mutating, execute: setMemberOfferStatus }
     ];
-    for (const tool of tools) modelContext.registerTool(tool, { signal: controller.signal });
+    for (const tool of tools) modelContext.registerTool({ ...tool, description: `${brandDescription}. ${tool.description}` }, { signal: controller.signal });
     addEventListener("pagehide", () => controller.abort(), { once: true });
   }
   if (modelContext?.registerTool && !["signin", "admin_signin", "admin_offers", "checkout"].includes(page)) {
@@ -686,7 +688,7 @@
     if (page === "basket") tools.push(
       { name: "remove_from_basket", description: "Remove one product from this tab's reversible basket.", inputSchema: schema({ product_id: productId }, ["product_id"]), annotations: mutating, execute: removeFromBasket }
     );
-    for (const tool of tools) modelContext.registerTool(tool, { signal: controller.signal });
+    for (const tool of tools) modelContext.registerTool({ ...tool, description: `${brandDescription}. ${tool.description}` }, { signal: controller.signal });
     addEventListener("pagehide", () => controller.abort(), { once: true });
   }
 })();

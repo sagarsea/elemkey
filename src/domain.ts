@@ -83,14 +83,14 @@ export function validateFixtures(fixturesValue: unknown, ruleValue: unknown) {
     return Object.freeze({ ...member, tier: legacy ? "standard" : member.tier }) as Member;
   });
   if (members.length < 1 || new Set(members.map(({ id }) => id)).size !== members.length || new Set(members.map(({ email }) => email.toLocaleLowerCase("en-GB"))).size !== members.length) fail();
-  const member = members.find(({ email }) => email === "sagar@example.test") ?? fail();
+  const member = members.find(({ tier }) => tier === "standard") ?? fail();
   const rules = (Array.isArray(ruleValue) ? ruleValue : [ruleValue]).map(validateRule);
   if (new Set(rules.map(({ product_sku }) => product_sku)).size !== rules.length || rules.some(({ product_sku }) => !products.some(({ sku }) => sku === product_sku))) fail();
   return { products: Object.freeze(products), member, members: Object.freeze(members), rules: Object.freeze(rules) };
 }
 
 export function loadConfig(env: SecretEnv = process.env): AppConfig {
-  const validated = validateFixtures(JSON.parse(readFileSync(resolve("config/demo-fixtures.json"), "utf8")), JSON.parse(readFileSync(resolve("config/offer-rule.json"), "utf8")));
+  const validated = validateFixtures(JSON.parse(readFileSync(resolve("config/retail-fixtures.json"), "utf8")), JSON.parse(readFileSync(resolve("config/offer-rule.json"), "utf8")));
   const [session, offer, binding] = validateSecrets(env);
   const product = validated.products.find(({ sku }) => sku === "AX7-BLK") ?? fail();
   const rule = validated.rules.find(({ product_sku }) => product_sku === product.sku) ?? fail();

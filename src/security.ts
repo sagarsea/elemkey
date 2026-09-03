@@ -26,7 +26,7 @@ export type OwnerSession = {
 
 export const ownerAccount = Object.freeze({
   id: "owner-northmere-1",
-  email: "owner@northmere.test",
+  email: "owner@northmere.audio",
   password_salt: "f689acc96a173970027dce73ecef387d",
   password_hash: "cdb68c732d3180655fd5cd4bfc25efe61a9ec94824aa3990f91ee60e4569860ba14671f4a94677be8d21b2a72dc429358694d141d10b42b50fd84a4eeaf8eb8d"
 });

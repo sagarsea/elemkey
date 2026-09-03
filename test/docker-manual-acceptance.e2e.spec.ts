@@ -19,21 +19,21 @@ test("Docker acceptance uses separate owner, standard-member, and VIP-member ses
   const ownerErrors: string[] = [];
   owner.on("console", (message) => { if (message.type() === "error") ownerErrors.push(message.text()); });
   await owner.goto("/admin/signin");
-  await owner.getByLabel("Owner email").fill("owner@northmere.test");
+  await owner.getByLabel("Owner email").fill("owner@northmere.audio");
   await owner.getByLabel("Owner password").fill("NorthmereOwner2026!");
   await owner.getByRole("button", { name: "Sign in" }).click();
   await expect(owner.locator("#admin-offer-list")).toContainText("Native Canary persistence proof");
   await owner.screenshot({ path: "test/docker-owner-acceptance.png", fullPage: true });
 
   const standardContext = await browser.newContext();
-  const standard = await signIn(standardContext, "sagar@example.test", "ElemKeyDemo2026!");
+  const standard = await signIn(standardContext, "member@northmere.audio", "NorthmereMember2026!");
   await expect(standard.page.locator('[data-offer-product-id="product-td3-slv"]')).toHaveCount(1);
   await standard.page.screenshot({ path: "test/docker-standard-member-acceptance.png", fullPage: true });
 
   const vipContext = await browser.newContext();
-  const vip = await signIn(vipContext, "vip@northmere.test", "ElemKeyVip2026!");
+  const vip = await signIn(vipContext, "vip@northmere.audio", "NorthmereVip2026!");
   await vip.page.getByRole("button", { name: "Check offer for Tide D3 DAC" }).click();
-  await expect(vip.page.locator('[data-offer-product-id="product-td3-slv"]')).toContainText("£214.14");
+  await expect(vip.page.locator('[data-offer-product-id="product-td3-slv"]')).toContainText("£219.12");
   await vip.page.screenshot({ path: "test/docker-vip-member-acceptance.png", fullPage: true });
 
   expect([...ownerErrors, ...standard.errors, ...vip.errors]).toEqual([]);

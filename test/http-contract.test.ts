@@ -63,14 +63,14 @@ test("sign-in is human-only, generic, same-origin protected, encrypted, and safe
 
   const rejected = await fetch(`${origin}/signin`, {
     method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", cookie: guestCookie, origin: "https://evil.test" },
-    body: new URLSearchParams({ email: "sagar@example.test", password: "wrong", request_token: requestToken, return_to: "https://evil.test" })
+    body: new URLSearchParams({ email: "member@northmere.audio", password: "wrong", request_token: requestToken, return_to: "https://evil.test" })
   });
   assert.equal(rejected.status, 403);
   assert.match(await rejected.text(), /Unable to sign in/);
 
   const accepted = await fetch(`${origin}/signin`, {
     method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", cookie: guestCookie, origin },
-    body: new URLSearchParams({ email: "sagar@example.test", password: "ElemKeyDemo2026!", request_token: requestToken, return_to: "https://evil.test" })
+    body: new URLSearchParams({ email: "member@northmere.audio", password: "NorthmereMember2026!", request_token: requestToken, return_to: "https://evil.test" })
   });
   assert.equal(accepted.status, 303);
   assert.equal(accepted.headers.get("location"), "/products/AX7-BLK");
@@ -94,7 +94,7 @@ test("signed-out and signed-in offer envelopes feed a deterministic protected ba
 
   const login = await fetch(`${origin}/signin`, {
     method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", cookie: jar, origin },
-    body: new URLSearchParams({ email: "sagar@example.test", password: "ElemKeyDemo2026!", request_token: requestToken, return_to: "/products/AX7-BLK" })
+    body: new URLSearchParams({ email: "member@northmere.audio", password: "NorthmereMember2026!", request_token: requestToken, return_to: "/products/AX7-BLK" })
   });
   jar = cookie(login);
   const refreshed = await fetch(`${origin}/products/AX7-BLK`, { headers: { cookie: jar } });
@@ -105,7 +105,7 @@ test("signed-out and signed-in offer envelopes feed a deterministic protected ba
   const eligible = await fetch(`${origin}/api/offers/evaluate`, { method: "POST", headers: { "content-type": "application/json", cookie: jar }, body: JSON.stringify({ product_id: "product-ax7-blk" }) });
   const offer = await eligible.json();
   assert.equal(offer.status, "eligible");
-  assert.equal(offer.data.delivered_total_pence, 42914);
+  assert.equal(offer.data.delivered_total_pence, 43413);
   assert.equal(offer.data.expires_at, "2026-08-30T10:05:00.000Z");
 
   const rejected = await fetch(`${origin}/api/basket/preview`, { method: "POST", headers: { "content-type": "application/json", cookie: jar, origin }, body: JSON.stringify({ product_id: "product-ax7-blk", offer_quote: offer.data.offer_quote, quantity: 2 }) });
@@ -122,7 +122,7 @@ test("signed-out and signed-in offer envelopes feed a deterministic protected ba
     assert.equal(response.status, 200);
     const preview = await response.json();
     assert.equal(preview.status, "preview_ready");
-    assert.equal(preview.data.line_item.delivered_total_pence, 42914);
+    assert.equal(preview.data.line_item.delivered_total_pence, 43413);
     assert.equal(preview.data.checkout_preview_url, "/checkout-preview");
   }
 });
@@ -135,7 +135,7 @@ test("expired sessions, expired quotes, and altered quotes recover without detai
   const guestToken = token(await signin.text());
   const login = await fetch(`${origin}/signin`, {
     method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", cookie: guest, origin },
-    body: new URLSearchParams({ email: "sagar@example.test", password: "ElemKeyDemo2026!", request_token: guestToken, return_to: "/products/AX7-BLK" })
+    body: new URLSearchParams({ email: "member@northmere.audio", password: "NorthmereMember2026!", request_token: guestToken, return_to: "/products/AX7-BLK" })
   });
   let jar = cookie(login);
   const page = await fetch(`${origin}/products/AX7-BLK`, { headers: { cookie: jar } });

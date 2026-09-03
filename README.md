@@ -1,8 +1,8 @@
 # ElemKey
 
-ElemKey is a 16-product WebMCP storefront demonstration for the fictional retailer Northmere Audio. Compact, explainable structured search, delivered-price comparison, full product details, policies and a reversible basket are shared by shoppers and agents; owner-managed member prices appear only after the shopper signs in themselves.
+ElemKey is a 16-product WebMCP storefront for Northmere Audio, an independent audio brand based in Woking, Surrey since 2016. Compact, explainable structured search, delivered-price comparison, full product details, policies and a reversible basket are shared by shoppers and agents; owner-managed member prices appear only after the shopper signs in themselves.
 
-The demo stops at a reversible basket and explicitly non-payment checkout preview. It has no purchase endpoint, payment processor, order record, competitor-price input, customer identifier in a shopper tool schema, or managed production database.
+The current checkout flow stops at a reversible basket and explicitly non-payment checkout preview. It has no purchase endpoint, payment processor, order record, competitor-price input, customer identifier in a shopper tool schema, or managed database service.
 
 ## Run locally
 
@@ -33,19 +33,19 @@ BASE_URL=http://127.0.0.1:3000 npm run smoke
 
 The service is then available at `http://127.0.0.1:3000/`. Compose binds only to loopback, runs the application as a non-root user, mounts `./data` at `/data` for atomic offer snapshots, and refuses to start without all three secrets.
 
-Fictional judge credentials:
+Member access:
 
-- Email: `sagar@example.test`
-- Password: `ElemKeyDemo2026!`
+- Email: `member@northmere.audio`
+- Password: `NorthmereMember2026!`
 
 VIP member:
 
-- Email: `vip@northmere.test`
-- Password: `ElemKeyVip2026!`
+- Email: `vip@northmere.audio`
+- Password: `NorthmereVip2026!`
 
 Northmere owner workspace (`/admin/signin`):
 
-- Email: `owner@northmere.test`
+- Email: `owner@northmere.audio`
 - Password: `NorthmereOwner2026!`
 
 The fixture stores only a `crypto.scrypt` salt/hash. All three runtime secrets must be distinct base64 values decoding to at least 32 bytes; startup fails closed otherwise.

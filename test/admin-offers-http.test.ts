@@ -22,11 +22,12 @@ async function serve() {
 afterEach(async () => { clock = new Date("2026-08-30T10:00:00.000Z"); await Promise.all(servers.splice(0).map((server) => new Promise<void>((resolve) => server.close(() => resolve())))); for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
 const cookie = (response: Response) => response.headers.get("set-cookie")?.split(";", 1)[0] ?? "";
 const token = (html: string) => html.match(/<meta name="request-token" content="([^"]+)"/)?.[1] ?? "";
+const releaseStageLanguage = /\b(?:demo|demonstration|staging|sandbox|prototype)\b/i;
 async function ownerSignIn(origin: string) {
   const page = await fetch(`${origin}/admin/signin`); const guest = cookie(page); const requestToken = token(await page.text());
-  const login = await fetch(`${origin}/admin/signin`, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", cookie: guest, origin }, body: new URLSearchParams({ email: "owner@northmere.test", password: "NorthmereOwner2026!", request_token: requestToken }) });
-  const jar = cookie(login); const workspace = await fetch(`${origin}/admin/offers`, { headers: { cookie: jar } });
-  return { jar: cookie(workspace) || jar, requestToken: token(await workspace.text()) };
+  const login = await fetch(`${origin}/admin/signin`, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", cookie: guest, origin }, body: new URLSearchParams({ email: "owner@northmere.audio", password: "NorthmereOwner2026!", request_token: requestToken }) });
+  const jar = cookie(login); const workspace = await fetch(`${origin}/admin/offers`, { headers: { cookie: jar } }); const html = await workspace.text();
+  return { jar: cookie(workspace) || jar, requestToken: token(html), html };
 }
 const draft = { name: "VIP Meridian", product_ids: ["product-mh2-slv"], audience: { type: "tier", tier: "vip" }, discount_percent: 20, delivery_pence: 0, status: "active", starts_at: null, ends_at: null };
 
@@ -34,6 +35,7 @@ test("owner cookie, CSRF boundary, logout, and member privilege are isolated", a
   const origin = await serve();
   assert.equal((await fetch(`${origin}/api/admin/offers`)).status, 401);
   const owner = await ownerSignIn(origin);
+  assert.doesNotMatch(owner.html, releaseStageLanguage);
   assert.equal((await fetch(`${origin}/account`, { headers: { cookie: owner.jar } })).status, 200);
   assert.doesNotMatch(await (await fetch(`${origin}/account`, { headers: { cookie: owner.jar } })).text(), /Welcome back/);
   assert.equal((await fetch(`${origin}/api/admin/offers`, { headers: { cookie: owner.jar } })).status, 200);
@@ -64,6 +66,7 @@ test("preview-bound create, expiry, revision, status, and two-tab conflicts appe
   assert.equal((await (await fetch(`${origin}/api/admin/offers/${offerId}`, { method: "PUT", headers, body: JSON.stringify({ preview_token: fresh.data.preview_token }) })).json()).status, "revised");
   assert.equal((await (await fetch(`${origin}/api/admin/offers/${offerId}/status`, { method: "POST", headers, body: JSON.stringify({ status: "inactive", expected_version: 3 }) })).json()).status, "status_changed");
   const list = await (await fetch(`${origin}/api/admin/offers`, { headers: { cookie: owner.jar } })).json();
+  assert.doesNotMatch(JSON.stringify(list), releaseStageLanguage);
   assert.equal(list.data.revisions.filter((item: { offer_id: string }) => item.offer_id === offerId).length, 3);
   assert.equal(list.data.offers.find((item: { offer_id: string }) => item.offer_id === offerId).status, "inactive");
 });
@@ -80,10 +83,10 @@ test("new targeted winner reaches the right member and deactivation makes the ol
     let jar = cookie(login); const product = await fetch(`${origin}/products/MH2-SLV`, { headers: { cookie: jar } }); jar = cookie(product) || jar;
     return { jar, requestToken: token(await product.text()) };
   };
-  const standard = await signIn("sagar@example.test", "ElemKeyDemo2026!");
+  const standard = await signIn("member@northmere.audio", "NorthmereMember2026!");
   const standardOffer = await (await fetch(`${origin}/api/offers/evaluate`, { method: "POST", headers: { "content-type": "application/json", cookie: standard.jar }, body: JSON.stringify({ product_id: "product-mh2-slv" }) })).json();
-  assert.equal(standardOffer.status, "eligible"); assert.equal(standardOffer.data.delivered_total_pence, 31410);
-  const vip = await signIn("vip@northmere.test", "ElemKeyVip2026!");
+  assert.equal(standardOffer.status, "eligible"); assert.equal(standardOffer.data.delivered_total_pence, 30712);
+  const vip = await signIn("vip@northmere.audio", "NorthmereVip2026!");
   const offer = await (await fetch(`${origin}/api/offers/evaluate`, { method: "POST", headers: { "content-type": "application/json", cookie: vip.jar }, body: JSON.stringify({ product_id: "product-mh2-slv" }) })).json();
   assert.equal(offer.status, "eligible"); assert.equal(offer.data.delivered_total_pence, 27920);
   await fetch(`${origin}/api/admin/offers/${created.data.revision.offer_id}/status`, { method: "POST", headers: ownerHeaders, body: JSON.stringify({ status: "inactive", expected_version: 2 }) });

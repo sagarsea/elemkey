@@ -11,7 +11,7 @@ type AdminSession = Partial<OwnerSession>;
 export type AppOptions = { now?: () => Date; secureCookie?: boolean; failOperation?: "catalogue" | "offer" | "basket" | "product_page" | "admin"; offerStore?: OfferStore; offerStorePath?: string };
 const policies = Object.freeze({
   delivery: { title: "Delivery", body: "In-stock products show their current estimate and delivery price. Member delivery is free only when an eligible offer says so." },
-  returns: { title: "Returns", body: "Unused products may be returned within 30 days in their original condition and packaging. This demonstration does not start or track returns." },
+  returns: { title: "Returns", body: "Unused products may be returned within 30 days in their original condition and packaging. Contact Northmere Audio before sending an item back." },
   member_offers: { title: "Member offers", body: "Signed-in members receive at least 5% off and free delivery on every catalogue product. Offers expire after five minutes and are checked again before basket display." }
 });
 type PolicyTopic = keyof typeof policies;
@@ -49,11 +49,11 @@ export function createApp(config: AppConfig, options: AppOptions = {}) {
   const activeSession = async (req: Request, res: Response) => {
     const session = await sessionFor(req, res);
     const state = validateSession(session, now());
-    if (state.active) { session.last_seen_at = now().toISOString(); await session.save(); return { session: session as MemberSession, reason: "active" as const }; }
-    if (state.reason === "session_expired") session.destroy();
-    return { session: null, reason: state.reason };
+    if (state.active && config.membersById.has(session.member_id!)) { session.last_seen_at = now().toISOString(); await session.save(); return { session: session as MemberSession, reason: "active" as const }; }
+    if (state.active || state.reason === "session_expired") session.destroy();
+    return { session: null, reason: state.active ? "signed_out" as const : state.reason };
   };
-  const signedIn = async (req: Request, res: Response) => validateSession(await sessionFor(req, res), now()).active;
+  const signedIn = async (req: Request, res: Response) => Boolean((await activeSession(req, res)).session);
   const activeOwner = async (req: Request, res: Response) => {
     const session = await ownerSessionFor(req, res);
     const state = validateOwnerSession(session, now());
@@ -223,7 +223,7 @@ export function createApp(config: AppConfig, options: AppOptions = {}) {
     return res.json({ status: "verified", observed_at: verifiedAt, data: {
       merchant: "Northmere Audio",
       product: { product_id: product.id, title: product.title, sku: claims.sku, variant: product.variant, quantity: 1 },
-      terms: { currency: claims.currency, unit_price_pence: claims.unit_price_pence, public_delivery_pence: product.delivery_pence, public_delivered_total_pence: publicTotal, discount_pence: claims.discount_pence, member_delivery_pence: claims.delivery_pence, delivered_total_pence: claims.delivered_total_pence, savings_pence: publicTotal - claims.delivered_total_pence, stock_status: "in_stock", stock_quantity: claims.stock_quantity, delivery_estimate: product.delivery_estimate, returns: { window_days: 30, summary: policies.returns.body }, warranty: warranty ? { status: "provided", summary: warranty } : { status: "not_provided", summary: "Warranty information is not provided by this demonstration." } },
+      terms: { currency: claims.currency, unit_price_pence: claims.unit_price_pence, public_delivery_pence: product.delivery_pence, public_delivered_total_pence: publicTotal, discount_pence: claims.discount_pence, member_delivery_pence: claims.delivery_pence, delivered_total_pence: claims.delivered_total_pence, savings_pence: publicTotal - claims.delivered_total_pence, stock_status: "in_stock", stock_quantity: claims.stock_quantity, delivery_estimate: product.delivery_estimate, returns: { window_days: 30, summary: policies.returns.body }, warranty: warranty ? { status: "provided", summary: warranty } : { status: "not_provided", summary: "Warranty information has not been supplied for this product." } },
       benefit: { rule_id: claims.rule_id, rule_version: claims.rule_version, reason: winner.reason },
       verified_at: verifiedAt, valid_until: claims.expires_at,
       privacy: { credentials_shared: false, competitor_data_shared: false, purchase_created: false }

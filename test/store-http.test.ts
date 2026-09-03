@@ -23,13 +23,18 @@ afterEach(async () => Promise.all(servers.splice(0).map((server) => new Promise<
 after(() => rmSync(storePath, { force: true }));
 const cookie = (response: Response) => response.headers.get("set-cookie")?.split(";", 1)[0] ?? "";
 const token = (html: string) => html.match(/<meta name="request-token" content="([^"]+)"/)?.[1] ?? "";
+const releaseStageLanguage = /\b(?:demo|demonstration|staging|sandbox|prototype)\b/i;
 
 test("retail routes, canonical products, and recovery are complete", async () => {
   const origin = await serve();
-  for (const path of ["/", "/shop", "/account", "/policies/delivery", "/policies/returns", "/policies/member_offers", ...config.products.map(({ product_url }) => product_url)]) {
+  for (const path of ["/", "/shop", "/account", "/signin", "/admin/signin", "/basket", "/checkout-preview", "/offer-rule", "/policies/delivery", "/policies/returns", "/policies/member_offers", ...config.products.map(({ product_url }) => product_url)]) {
     const response = await fetch(origin + path);
     assert.equal(response.status, 200, path);
-    assert.match(await response.text(), /Northmere Audio/, path);
+    const html = await response.text();
+    assert.match(html, /Northmere Audio/, path);
+    assert.match(html, /Woking, Surrey/, path);
+    assert.match(html, /since 2016/i, path);
+    assert.doesNotMatch(html, releaseStageLanguage, path);
   }
   const canonical = await fetch(`${origin}/products/ax7-blk`, { redirect: "manual" });
   assert.equal(canonical.status, 308);
@@ -56,7 +61,8 @@ test("product pages expose canonical, descriptive, machine-readable merchant fac
   for (const product of config.products) {
     const html = await (await fetch(origin + product.product_url)).text();
     assert.match(html, new RegExp(`<link rel="canonical" href="${publicOrigin}${product.product_url}">`), product.sku);
-    assert.match(html, new RegExp(`<meta name="description" content="${product.description.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}">`), product.sku);
+    const description = `${product.description} From Northmere Audio, an independent audio brand based in Woking, Surrey since 2016.`;
+    assert.match(html, new RegExp(`<meta name="description" content="${description.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}">`), product.sku);
     const json = html.match(/<script type="application\/ld\+json">([^<]+)<\/script>/)?.[1];
     assert.ok(json, product.sku);
     assert.deepEqual(JSON.parse(json), {
@@ -76,7 +82,8 @@ test("product pages expose canonical, descriptive, machine-readable merchant fac
         priceCurrency: product.currency,
         price: (product.unit_price_pence / 100).toFixed(2),
         availability: `https://schema.org/${product.stock_quantity ? "InStock" : "OutOfStock"}`,
-        itemCondition: "https://schema.org/NewCondition"
+        itemCondition: "https://schema.org/NewCondition",
+        seller: { "@type": "Organization", name: "Northmere Audio", foundingDate: "2016", address: { "@type": "PostalAddress", addressLocality: "Woking", addressRegion: "Surrey", addressCountry: "GB" } }
       }
     }, product.sku);
   }
@@ -93,13 +100,14 @@ test("account preserves signed-out copy and signed-in offers follow active rules
 
   const login = await fetch(`${origin}/signin`, {
     method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", cookie: jar, origin },
-    body: new URLSearchParams({ email: "sagar@example.test", password: "ElemKeyDemo2026!", request_token: token(signedOutHtml), return_to: "/account" })
+    body: new URLSearchParams({ email: "member@northmere.audio", password: "NorthmereMember2026!", request_token: token(signedOutHtml), return_to: "/account" })
   });
   jar = cookie(login);
   const account = await fetch(`${origin}/account`, { headers: { cookie: jar } });
   const html = await account.text();
   assert.match(html, /Active membership/);
-  assert.match(html, /Order history is not part of this demonstration/);
+  assert.match(html, /Order history is not currently available online/);
+  assert.doesNotMatch(html, releaseStageLanguage);
   assert.match(html, /href="\/policies\/member_offers"/);
   assert.equal((html.match(/data-offer-product-id=/g) ?? []).length, config.products.length);
   for (const { sku } of config.products) assert.equal((html.match(new RegExp(sku, "g")) ?? []).length, 1, sku);
@@ -119,6 +127,7 @@ test("product, policy, and filtered catalogue APIs return public merchant data",
     const policy = await (await fetch(`${origin}/api/store/policies?topic=${topic}`)).json();
     assert.equal(policy.status, "ok");
     assert.equal(policy.data.topic, topic);
+    assert.doesNotMatch(JSON.stringify(policy), releaseStageLanguage);
   }
   assert.equal((await fetch(`${origin}/api/store/policies?topic=orders`)).status, 400);
 });

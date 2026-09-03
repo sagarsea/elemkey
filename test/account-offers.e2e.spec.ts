@@ -2,8 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 
 async function signIn(page: Page, returnTo = "/account") {
   await page.goto(`/signin?return_to=${returnTo}`);
-  await page.getByLabel("Email").fill("sagar@example.test");
-  await page.getByLabel("Password").fill("ElemKeyDemo2026!");
+  await page.getByLabel("Email").fill("member@northmere.audio");
+  await page.getByLabel("Password").fill("NorthmereMember2026!");
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForLoadState("load");
 }
@@ -25,14 +25,14 @@ test("account checks exact offers and upgrades one public line without losing an
   await expect(page.locator("[data-offer-product-id]")).toHaveCount(16);
   await page.getByRole("button", { name: "Check offer for Auralux X7 Studio Headphones" }).click();
   await expect(page.locator('[data-offer-product-id="product-ax7-blk"] [data-offer-result]')).toContainText("£499.00");
-  await expect(page.locator('[data-offer-product-id="product-ax7-blk"] [data-offer-result]')).toContainText("£69.86");
-  await expect(page.locator('[data-offer-product-id="product-ax7-blk"] [data-offer-result]')).toContainText("£429.14");
+  await expect(page.locator('[data-offer-product-id="product-ax7-blk"] [data-offer-result]')).toContainText("£64.87");
+  await expect(page.locator('[data-offer-product-id="product-ax7-blk"] [data-offer-result]')).toContainText("£434.13");
 
   await page.getByRole("button", { name: "Check offer for Velora N9 Headphones" }).click();
   const vn9 = page.locator('[data-offer-product-id="product-vn9-snd"]');
   await expect(vn9.locator("[data-offer-result]")).toContainText("£279.00");
-  await expect(vn9.locator("[data-offer-result]")).toContainText("£33.48");
-  await expect(vn9.locator("[data-offer-result]")).toContainText("£245.52");
+  await expect(vn9.locator("[data-offer-result]")).toContainText("£30.69");
+  await expect(vn9.locator("[data-offer-result]")).toContainText("£248.31");
   await expect(vn9.locator("time")).toHaveAttribute("datetime", /T/);
   await page.getByRole("button", { name: "Add member price for Velora N9 Headphones" }).click();
   await expect(vn9.locator("[data-offer-result]")).toContainText("In basket");
@@ -40,7 +40,7 @@ test("account checks exact offers and upgrades one public line without losing an
   await expect(page.locator(".basket-line")).toHaveCount(2);
   await expect(page.locator('[data-region="basket"]')).toContainText("Velora N9 Headphones");
   await expect(page.locator('[data-region="basket"]')).toContainText("Tide D3 DAC");
-  await expect(page.locator('[data-region="basket"]')).toContainText("£245.52");
+  await expect(page.locator('[data-region="basket"]')).toContainText("£248.31");
 });
 
 test("offer requests are isolated by product and newest same-product response wins", async ({ page }) => {
@@ -104,7 +104,7 @@ test("signed-in account adds the two existing offer tools and drives the same vi
     const tool = (window as unknown as { __registrations: Array<{ name: string; execute: (input: unknown) => Promise<unknown> }> }).__registrations.find(({ name }) => name === "get_member_offer")!;
     return tool.execute({ product_id: "product-vn9-snd" });
   }) as { data: { offer_quote: string } };
-  await expect(page.locator('[data-offer-product-id="product-vn9-snd"] [data-offer-result]')).toContainText("£245.52");
+  await expect(page.locator('[data-offer-product-id="product-vn9-snd"] [data-offer-result]')).toContainText("£248.31");
   await page.evaluate(async ({ quote }) => {
     const tool = (window as unknown as { __registrations: Array<{ name: string; execute: (input: unknown) => Promise<unknown> }> }).__registrations.find(({ name }) => name === "prepare_basket")!;
     await tool.execute({ product_id: "product-vn9-snd", offer_quote: quote, quantity: 1 });
@@ -172,7 +172,7 @@ test("sign-out removes protected lines but retains valid public lines", async ({
   await signIn(page);
   await page.getByRole("button", { name: "Check offer for Auralux X7 Studio Headphones" }).click();
   await page.getByRole("button", { name: "Add member price for Auralux X7 Studio Headphones" }).click();
-  await expect(page.locator('[data-region="basket"]')).toContainText("£429.14");
+  await expect(page.locator('[data-region="basket"]')).toContainText("£434.13");
   await page.getByRole("button", { name: "Sign out" }).click();
   const stored = await page.evaluate(() => JSON.parse(sessionStorage.getItem("elemkey.basket") || "[]"));
   expect(stored).toHaveLength(1);

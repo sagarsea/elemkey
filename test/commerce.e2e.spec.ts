@@ -7,21 +7,21 @@ test("ordinary storefront completes the reversible journey without WebMCP", asyn
   await page.getByRole("button", { name: "Search" }).click();
   await expect(page.locator('[data-region="product"]')).toContainText("£499.00");
   await page.getByRole("link", { name: "Sign in yourself" }).click();
-  await page.getByLabel("Email").fill("sagar@example.test");
-  await page.getByLabel("Password").fill("ElemKeyDemo2026!");
+  await page.getByLabel("Email").fill("member@northmere.audio");
+  await page.getByLabel("Password").fill("NorthmereMember2026!");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/products\/AX7-BLK/);
   await page.waitForLoadState("load");
   await page.getByRole("button", { name: "Get my member offer" }).click();
-  await expect(page.locator('[data-region="offer"]')).toContainText("£429.14");
+  await expect(page.locator('[data-region="offer"]')).toContainText("£434.13");
   await page.getByRole("button", { name: "Prepare basket for review" }).click();
-  await expect(page.locator('[data-region="basket"]')).toContainText("£429.14");
+  await expect(page.locator('[data-region="basket"]')).toContainText("£434.13");
   await page.getByRole("button", { name: "Prepare basket for review" }).click();
   await expect(page.locator('[data-region="basket"] .line-item')).toHaveCount(1);
   await page.getByRole("link", { name: "Review basket" }).click();
   await expect(page.locator('[data-region="basket"]')).toContainText("Verified by Northmere Audio");
   await page.getByRole("link", { name: "Continue to non-payment preview" }).click();
-  await expect(page.getByRole("heading", { name: "This is a non-payment checkout preview." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Online checkout is not currently available." })).toBeVisible();
   await expect(page.getByRole("button")).toHaveCount(0);
   await expect(page.locator("body")).not.toContainText(/place order|pay now/i);
 });
@@ -81,8 +81,8 @@ test("network failure preserves public state, newest search wins, and unknown of
 
   await page.unroute("**/api/products/search**");
   await page.goto("/signin?return_to=/products/AX7-BLK");
-  await page.getByLabel("Email").fill("sagar@example.test");
-  await page.getByLabel("Password").fill("ElemKeyDemo2026!");
+  await page.getByLabel("Email").fill("member@northmere.audio");
+  await page.getByLabel("Password").fill("NorthmereMember2026!");
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForLoadState("load");
   await page.route("**/api/offers/evaluate", (route) => route.fulfill({ contentType: "application/json", body: JSON.stringify({ status: "unknown_new_status", data: { delivered_total_pence: 1 }, error: null, ui_region: "offer" }) }));
@@ -93,16 +93,16 @@ test("network failure preserves public state, newest search wins, and unknown of
 
 test("safe trace excludes inputs, identity, credentials, and quotes; logout clears commercial state", async ({ page }) => {
   await page.goto("/signin?return_to=/products/AX7-BLK");
-  await page.getByLabel("Email").fill("sagar@example.test");
-  await page.getByLabel("Password").fill("ElemKeyDemo2026!");
+  await page.getByLabel("Email").fill("member@northmere.audio");
+  await page.getByLabel("Password").fill("NorthmereMember2026!");
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForLoadState("load");
   await page.getByRole("button", { name: "Get my member offer" }).click();
   await page.getByRole("button", { name: "Prepare basket for review" }).click();
-  await expect(page.locator('[data-region="basket"]')).toContainText("£429.14");
+  await expect(page.locator('[data-region="basket"]')).toContainText("£434.13");
   const trace = await page.evaluate(() => sessionStorage.getItem("elemkey.trace"));
   expect(trace).toBeTruthy();
-  expect(trace).not.toMatch(/sagar|ElemKeyDemo|offer_quote|product_id|eyJ/i);
+  expect(trace).not.toMatch(/member@northmere|NorthmereMember|offer_quote|product_id|eyJ/i);
   expect(JSON.parse(trace!)[0]).toEqual(expect.objectContaining({ call_name: expect.any(String), status: expect.any(String), at: expect.any(String), duration_ms: expect.any(Number), ui_region: expect.any(String) }));
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page).toHaveURL(/logged_out=1/);

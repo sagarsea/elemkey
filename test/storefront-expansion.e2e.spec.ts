@@ -24,17 +24,17 @@ test("sign-in returns to the originating product and member price upgrades its p
   await page.getByRole("button", { name: "Add to basket" }).click();
   await expect(page.locator('[data-region="basket"]')).toContainText("£288.99");
   await page.getByRole("link", { name: "Sign in yourself" }).click();
-  await page.getByLabel("Email").fill("sagar@example.test");
-  await page.getByLabel("Password").fill("ElemKeyDemo2026!");
+  await page.getByLabel("Email").fill("member@northmere.audio");
+  await page.getByLabel("Password").fill("NorthmereMember2026!");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/products\/VN9-SND/);
   await page.getByRole("button", { name: "Get my member offer" }).click();
-  await expect(page.locator('[data-region="offer"]')).toContainText("£245.52");
+  await expect(page.locator('[data-region="offer"]')).toContainText("£248.31");
   await page.getByRole("button", { name: "Prepare basket for review" }).click();
-  await expect(page.locator('[data-region="basket"]')).toContainText("£245.52");
+  await expect(page.locator('[data-region="basket"]')).toContainText("£248.31");
   await page.goto("/basket");
   await expect(page.locator(".basket-line")).toHaveCount(1);
-  await expect(page.locator('[data-region="basket"]')).toContainText("£245.52");
+  await expect(page.locator('[data-region="basket"]')).toContainText("£248.31");
 });
 
 test("WebMCP tools are additive, exact, lifecycle-bound, and page scoped", async ({ page }) => {

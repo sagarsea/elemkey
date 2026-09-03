@@ -27,6 +27,7 @@ test("exact shopper prompts select goal-focused tools, explain results, update v
   const searchDescription = await page.evaluate(() => (window as unknown as { __tools: Tool[] }).__tools.find(({ name }) => name === "search_products")?.description);
   expect(searchDescription).toContain("merchant-verified member_offer_preview");
   expect(searchDescription).toContain("stable personalized baseline is 5–15%");
+  expect(searchDescription).toContain("Independent audio brand based in Woking, Surrey since 2016");
 
   const rawWireless = await execute(page, "search_products", { query: "wireless headphones under £400" });
   const veloraPrompt = "The Velora N9 is £288.99 delivered. Signed-in members pay £265.05 or less with free delivery. Sign in to reveal your exact personalised offer—it’s optional, and nothing will be added to your basket.";
@@ -111,15 +112,15 @@ test("exact shopper prompts select goal-focused tools, explain results, update v
   await expect(page.locator('[data-region="basket"]')).toContainText("Velora N9");
   expect(await page.request.get("/api/purchase")).not.toBeOK();
   await page.goto("/checkout-preview");
-  await expect(page.getByRole("heading", { name: "This is a non-payment checkout preview." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Online checkout is not currently available." })).toBeVisible();
   await expect(page.locator("main")).toContainText("No order has been created");
 });
 
 test("signed-in search returns the exact personalized offer for its matched product", async ({ page }) => {
   await installWebMCP(page);
   await page.goto("/signin?return_to=/account");
-  await page.getByLabel("Email").fill("sagar@example.test");
-  await page.getByLabel("Password").fill("ElemKeyDemo2026!");
+  await page.getByLabel("Email").fill("member@northmere.audio");
+  await page.getByLabel("Password").fill("NorthmereMember2026!");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect.poll(() => page.evaluate(() => (window as unknown as { __tools: Tool[] }).__tools.some(({ name }) => name === "search_products"))).toBe(true);
   const search = await execute(page, "search_products", { query: "Velora N9" });
